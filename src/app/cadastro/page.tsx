@@ -55,7 +55,10 @@ export default function CadastroPage() {
       }
 
       toast.success('Conta criada com sucesso!');
-      // Pequeno delay para garantir que o localStorage foi atualizado
+
+      // SALVAR EMAIL APÓS CADASTRO
+      localStorage.setItem("userEmail", formData.email);
+
       setTimeout(() => {
         router.push('/quiz');
       }, 100);
