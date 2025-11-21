@@ -37,7 +37,7 @@ export default function LoginPage() {
 
       if (data?.user) {
         toast.success('Login realizado com sucesso!');
-        
+
         // Verificar acesso antes de redirecionar
         const localUser = getLocalCurrentUser();
         if (!localUser) {
@@ -48,8 +48,10 @@ export default function LoginPage() {
 
         const email = localUser.email;
 
+        // SALVAR EMAIL LOCALMENTE
+        localStorage.setItem("userEmail", email);
+
         try {
-          // Fallback para contas locais
           if (!isConfigured() || !supabase) {
             router.push('/dashboard');
             setLoading(false);
@@ -62,7 +64,6 @@ export default function LoginPage() {
             .eq('email', email)
             .single();
 
-          // Conta local sem Supabase
           if (!user || supabaseError) {
             router.push('/dashboard');
             setLoading(false);
@@ -72,28 +73,24 @@ export default function LoginPage() {
           const now = new Date();
           const expires = user.access_expires_at ? new Date(user.access_expires_at) : null;
 
-          // 1. Usuário vitalício
           if (user.is_lifetime === true) {
             router.push('/dashboard');
             setLoading(false);
             return;
           }
 
-          // 2. Acesso por data
           if (expires && expires > now) {
             router.push('/dashboard');
             setLoading(false);
             return;
           }
 
-          // 3. Assinatura Stripe ativa
           if (user.subscription_status === 'active' && user.payment_verified === true) {
             router.push('/dashboard');
             setLoading(false);
             return;
           }
 
-          // Sem acesso
           router.push('/subscription?reason=inactive');
           setLoading(false);
         } catch (accessError) {
