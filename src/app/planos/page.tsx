@@ -18,6 +18,7 @@ export default function PlanosPage() {
     }
   }, []);
 
+  // 🚀 PLANOS ATUALIZADOS COM PRICE IDs DA STRIPE
   const plans = [
     {
       name: 'Mensal',
@@ -25,7 +26,7 @@ export default function PlanosPage() {
       period: '/mês',
       icon: Zap,
       color: 'from-blue-500 to-cyan-500',
-      stripeUrl: 'https://buy.stripe.com/4gM4gygFR9pL4TB0SRfQI01',
+      priceId: 'price_1SUWcJBgKzDsfhDgz36JYTQW',
       features: [
         'Acesso completo ao protocolo personalizado',
         'Todas as técnicas de foco',
@@ -42,7 +43,7 @@ export default function PlanosPage() {
       period: '/mês',
       icon: Crown,
       color: 'from-purple-500 to-pink-500',
-      stripeUrl: 'https://buy.stripe.com/8x2dR81KXbxT2Lt30ZfQI02',
+      priceId: 'price_1SUWn1BgKzDsfhDgZBiK5TIT',
       features: [
         'Tudo do plano mensal',
         'Economia de 19%',
@@ -60,7 +61,7 @@ export default function PlanosPage() {
       period: '/mês',
       icon: Sparkles,
       color: 'from-orange-500 to-red-500',
-      stripeUrl: 'https://buy.stripe.com/5kQ9AS9dpgSd2LtbxvfQI03',
+      priceId: 'price_1SUWpLBgKzDsfhDgzDp4yQrY',
       features: [
         'Tudo do plano trimestral',
         'Economia de 38%',
@@ -74,13 +75,34 @@ export default function PlanosPage() {
     }
   ];
 
-  const handleSubscribe = (stripeUrl: string) => {
-    if (!stripeUrl || stripeUrl.trim() === '') {
-      console.error('URL da Stripe inválida');
+  // 🚀 NOVO handleSubscribe usando Checkout Session
+  const handleSubscribe = async (priceId: string) => {
+    const email = localStorage.getItem("userEmail");
+
+    if (!email) {
+      alert("Você precisa estar logado para assinar um plano.");
       return;
     }
 
-    window.open(stripeUrl, '_blank', 'noopener,noreferrer');
+    try {
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, email }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Erro ao criar sessão:", data);
+        alert("Erro ao iniciar pagamento.");
+      }
+    } catch (error) {
+      console.error("Erro geral:", error);
+      alert("Não foi possível iniciar o checkout.");
+    }
   };
 
   return (
@@ -192,7 +214,7 @@ export default function PlanosPage() {
                       ? 'gradient-primary'
                       : 'bg-card hover:bg-card/80 border border-border'
                   }`}
-                  onClick={() => handleSubscribe(plan.stripeUrl)}
+                  onClick={() => handleSubscribe(plan.priceId)}
                 >
                   Assinar Agora
                 </Button>
