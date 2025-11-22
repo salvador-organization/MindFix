@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { localSignUp } from '@/lib/local-auth';
 import { toast } from 'sonner';
+import { saveUser } from '@/utils/saveUser';
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function CadastroPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.acceptTerms) {
       toast.error('Você precisa aceitar os termos de uso');
       return;
@@ -56,9 +57,18 @@ export default function CadastroPage() {
 
       toast.success('Conta criada com sucesso!');
 
-      // SALVAR EMAIL APÓS CADASTRO
-      localStorage.setItem("userEmail", formData.email);
+      // --- SALVA AUTOMATICAMENTE NO SUPABASE E LOCALSTORAGE ---
+      try {
+        await saveUser(formData.email, {
+          name: formData.name,
+          created_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Erro ao salvar usuário automaticamente:", e);
+      }
+      // -------------------------------------------------------
 
+      // Pequeno delay para garantir que o localStorage foi atualizado
       setTimeout(() => {
         router.push('/quiz');
       }, 100);
@@ -93,15 +103,10 @@ export default function CadastroPage() {
               <Label htmlFor="name">Nome completo</Label>
               <div className="relative">
                 <User className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Seu nome"
-                  className="pl-10"
+                <Input id="name" type="text" placeholder="Seu nome" className="pl-10"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
+                  required />
               </div>
             </div>
 
@@ -109,15 +114,10 @@ export default function CadastroPage() {
               <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  className="pl-10"
+                <Input id="email" type="email" placeholder="seu@email.com" className="pl-10"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
+                  required />
               </div>
             </div>
 
@@ -125,20 +125,12 @@ export default function CadastroPage() {
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
-                  className="pl-10 pr-10"
+                <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" className="pl-10 pr-10"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                >
+                  required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
@@ -148,44 +140,26 @@ export default function CadastroPage() {
               <Label htmlFor="confirmPassword">Confirmar senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Digite a senha novamente"
-                  className="pl-10"
+                <Input id="confirmPassword" type={showPassword ? 'text' : 'password'} placeholder="Digite a senha novamente" className="pl-10"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  required
-                />
+                  required />
               </div>
             </div>
 
             <div className="flex items-start gap-2">
-              <Checkbox
-                id="terms"
-                checked={formData.acceptTerms}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, acceptTerms: checked as boolean })
-                }
-              />
+              <Checkbox id="terms" checked={formData.acceptTerms} onCheckedChange={(checked) =>
+                setFormData({ ...formData, acceptTerms: checked as boolean })
+              } />
               <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
                 Aceito os{' '}
-                <Link href="/termos" className="text-primary hover:underline">
-                  termos de uso
-                </Link>{' '}
+                <Link href="/termos" className="text-primary hover:underline">termos de uso</Link>{' '}
                 e{' '}
-                <Link href="/privacidade" className="text-primary hover:underline">
-                  política de privacidade
-                </Link>
+                <Link href="/privacidade" className="text-primary hover:underline">política de privacidade</Link>
               </label>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full gradient-primary"
-              size="lg"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full gradient-primary" size="lg" disabled={loading}>
               {loading ? 'Criando conta...' : 'Criar conta'}
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
@@ -193,9 +167,7 @@ export default function CadastroPage() {
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             Já tem uma conta?{' '}
-            <Link href="/login" className="text-primary hover:underline font-semibold">
-              Fazer login
-            </Link>
+            <Link href="/login" className="text-primary hover:underline font-semibold">Fazer login</Link>
           </div>
         </Card>
       </motion.div>
