@@ -1,6 +1,9 @@
+// src/utils/saveUser.ts
+
 /**
- * saveUser - Frontend helper
- * Envia para a API segura do backend realizar o merge/upsert no Supabase
+ * saveUser - FRONTEND
+ * Dispara a sincronização para o backend /api/save-user
+ * e mantém o localStorage atualizado automaticamente.
  */
 export async function saveUser(email: string, updates: Record<string, any>) {
   try {
@@ -13,19 +16,23 @@ export async function saveUser(email: string, updates: Record<string, any>) {
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("Erro no saveUser API route:", data);
+      console.error("❌ Erro no saveUser API route:", data);
       return null;
     }
 
-    // 🟢 Atualiza localStorage automaticamente
-    if (data.user) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("userEmail", data.user.email);
+    // Atualiza localStorage automaticamente
+    try {
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("userEmail", data.user.email);
+      }
+    } catch (e) {
+      console.warn("⚠️ localStorage não disponível:", e);
     }
 
     return data.user;
   } catch (err) {
-    console.error("saveUser unexpected error:", err);
+    console.error("❌ saveUser unexpected error:", err);
     return null;
   }
 }
