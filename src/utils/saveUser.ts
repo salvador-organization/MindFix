@@ -1,40 +1,29 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnon);
-
 /**
- * saveUser - centraliza atualização do usuário no Supabase e no localStorage
- * @param email string
- * @param updates object - os campos a atualizar no Supabase (partial)
- * @returns the updated user record (or null)
+ * saveUser - Frontend helper
+ * Envia para a API segura do backend realizar o merge/upsert no Supabase
  */
 export async function saveUser(email: string, updates: Record<string, any>) {
   try {
-    // Upsert: cria ou atualiza por email (onConflict em email)
-    const { data, error } = await supabase
-      .from("users")
-      .upsert({ email, ...updates }, { onConflict: ["email"] })
-      .select()
-      .single();
+    const res = await fetch("/api/save-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, updates }),
+    });
 
-    if (error) {
-      console.error("saveUser supabase error:", error);
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Erro no saveUser API route:", data);
       return null;
     }
 
-    // Salva no localStorage (sincroniza)
-    try {
-      localStorage.setItem("user", JSON.stringify(data));
-      localStorage.setItem("userEmail", email);
-    } catch (e) {
-      // localStorage pode não existir no server-side; ignore erros
-      console.warn("localStorage não disponível:", e);
+    // 🟢 Atualiza localStorage automaticamente
+    if (data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("userEmail", data.user.email);
     }
 
-    return data;
+    return data.user;
   } catch (err) {
     console.error("saveUser unexpected error:", err);
     return null;
