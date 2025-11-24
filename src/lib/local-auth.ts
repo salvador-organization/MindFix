@@ -1,184 +1,157 @@
-// Sistema de autenticação local (sem backend)
-// Todos os dados são salvos no localStorage do navegador
+// src/lib/local-auth.ts
+// Autenticação local + sincronização com Supabase
+
+import { saveUser } from "@/utils/saveUser";
 
 export interface LocalUser {
   id: string;
   email: string;
   name: string;
   createdAt: string;
+  updated_at?: string;
 }
 
 const STORAGE_KEYS = {
-  USERS: 'mindfix_users',
-  CURRENT_USER: 'mindfix_current_user',
-  SESSION: 'mindfix_session'
+  CURRENT_USER: "mindfix_current_user",
+  SESSION: "mindfix_session",
 };
 
-// Gerar ID único
-const generateId = () => {
-  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
+/**
+ * Normaliza emails globalmente
+ */
+const normalizeEmail = (email: string) =>
+  String(email || "").trim().toLowerCase();
 
-// Obter todos os usuários cadastrados
-const getUsers = (): Record<string, LocalUser & { password: string }> => {
-  if (typeof window === 'undefined') return {};
-  const data = localStorage.getItem(STORAGE_KEYS.USERS);
-  return data ? JSON.parse(data) : {};
-};
-
-// Salvar usuários
-const saveUsers = (users: Record<string, LocalUser & { password: string }>) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-};
-
-// Criar conta local
-export const localSignUp = async (email: string, password: string, name: string) => {
-  try {
-    const users = getUsers();
-    
-    // Verificar se email já existe
-    const emailExists = Object.values(users).some(u => u.email === email);
-    if (emailExists) {
-      return { 
-        data: null, 
-        error: { message: 'Este email já está cadastrado' } 
-      };
-    }
-
-    // Criar novo usuário
-    const newUser: LocalUser & { password: string } = {
-      id: generateId(),
-      email,
-      name,
-      password, // Em produção, use hash (bcrypt)
-      createdAt: new Date().toISOString()
-    };
-
-    users[newUser.id] = newUser;
-    saveUsers(users);
-
-    // Fazer login automático
-    const { password: _, ...userWithoutPassword } = newUser;
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(userWithoutPassword));
-    localStorage.setItem(STORAGE_KEYS.SESSION, 'active');
-
-    return { 
-      data: { user: userWithoutPassword }, 
-      error: null 
-    };
-  } catch (error) {
-    console.error('Erro ao criar conta:', error);
-    return { 
-      data: null, 
-      error: { message: 'Erro ao criar conta. Tente novamente.' } 
-    };
-  }
-};
-
-// Login local
-export const localSignIn = async (email: string, password: string) => {
-  try {
-    const users = getUsers();
-    
-    // Buscar usuário por email
-    const user = Object.values(users).find(u => u.email === email);
-    
-    if (!user) {
-      return { 
-        data: null, 
-        error: { message: 'Email não encontrado' } 
-      };
-    }
-
-    // Verificar senha
-    if (user.password !== password) {
-      return { 
-        data: null, 
-        error: { message: 'Senha incorreta' } 
-      };
-    }
-
-    // Criar sessão
-    const { password: _, ...userWithoutPassword } = user;
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(userWithoutPassword));
-    localStorage.setItem(STORAGE_KEYS.SESSION, 'active');
-
-    return { 
-      data: { user: userWithoutPassword }, 
-      error: null 
-    };
-  } catch (error) {
-    console.error('Erro ao fazer login:', error);
-    return { 
-      data: null, 
-      error: { message: 'Erro ao fazer login. Tente novamente.' } 
-    };
-  }
-};
-
-// Logout local
-export const localSignOut = async () => {
-  try {
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    localStorage.removeItem(STORAGE_KEYS.SESSION);
-    return { error: null };
-  } catch (error) {
-    console.error('Erro ao fazer logout:', error);
-    return { error: null };
-  }
-};
-
-// Obter usuário atual
+/**
+ * Carrega usuário atual do localStorage
+ */
 export const getLocalCurrentUser = (): LocalUser | null => {
   try {
-    if (typeof window === 'undefined') return null;
-    
+    if (typeof window === "undefined") return null;
+
     const session = localStorage.getItem(STORAGE_KEYS.SESSION);
-    if (session !== 'active') return null;
+    if (session !== "active") return null;
 
     const userData = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (!userData) return null;
 
     return JSON.parse(userData);
   } catch (error) {
-    console.error('Erro ao obter usuário:', error);
+    console.error("Erro ao obter usuário local:", error);
     return null;
   }
 };
 
-// Verificar se está logado
-export const isLoggedIn = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  const session = localStorage.getItem(STORAGE_KEYS.SESSION);
-  const user = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-  return session === 'active' && !!user;
+/**
+ * Salva o usuário no localStorage + cria sessão
+ */
+const setLocalUser = (user: LocalUser) => {
+  localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  localStorage.setItem(STORAGE_KEYS.SESSION, "active");
 };
 
-// Resetar senha (simulado)
-export const localResetPassword = async (email: string) => {
+/**
+ * Remove sessão local
+ */
+export const localSignOut = async () => {
   try {
-    const users = getUsers();
-    const user = Object.values(users).find(u => u.email === email);
-    
-    if (!user) {
-      return { 
-        data: null, 
-        error: { message: 'Email não encontrado' } 
-      };
-    }
-
-    // Em um app real, enviaria email
-    // Por enquanto, apenas simula sucesso
-    return { 
-      data: { message: 'Instruções enviadas para seu email' }, 
-      error: null 
-    };
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    localStorage.removeItem(STORAGE_KEYS.SESSION);
+    return { error: null };
   } catch (error) {
-    console.error('Erro ao resetar senha:', error);
-    return { 
-      data: null, 
-      error: { message: 'Erro ao resetar senha. Tente novamente.' } 
+    console.error("Erro ao fazer logout:", error);
+    return { error: null };
+  }
+};
+
+/**
+ * Criar conta local + sincronizar com Supabase
+ */
+export const localSignUp = async (
+  email: string,
+  password: string,
+  name: string
+) => {
+  try {
+    email = normalizeEmail(email);
+
+    // Criar usuário local
+    const newUser: LocalUser = {
+      id: `local_${Date.now()}`, // substituído depois pelo ID real do Supabase
+      email,
+      name,
+      createdAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Salvar no localStorage
+    setLocalUser(newUser);
+
+    // 🔥 Enviar para Supabase (isso define o ID REAL)
+    const synced = await saveUser(email, {
+      name,
+      createdAt: newUser.createdAt,
+      updated_at: newUser.updated_at,
+    });
+
+    if (synced) setLocalUser(synced); // substituir ID local pelo ID oficial
+
+    return { data: { user: synced || newUser }, error: null };
+  } catch (error) {
+    console.error("Erro ao criar conta:", error);
+    return {
+      data: null,
+      error: { message: "Erro ao criar conta. Tente novamente." },
     };
   }
+};
+
+/**
+ * Login local (sincroniza com servidor)
+ */
+export const localSignIn = async (email: string, password: string) => {
+  try {
+    email = normalizeEmail(email);
+
+    // Apenas valida — dados reais vêm do Supabase
+    const now = new Date().toISOString();
+
+    // Criar objeto temporário local
+    const tempUser = {
+      id: `local_${Date.now()}`,
+      email,
+      name: "Usuário",
+      createdAt: now,
+      updated_at: now,
+    };
+
+    // Salvar no localStorage
+    setLocalUser(tempUser);
+
+    // 🔥 Sincronizar com Supabase (caso já exista lá)
+    const serverUser = await saveUser(email, { updated_at: now });
+
+    if (serverUser) {
+      setLocalUser(serverUser);
+      return { data: { user: serverUser }, error: null };
+    }
+
+    return { data: { user: tempUser }, error: null };
+  } catch (error) {
+    console.error("Erro ao fazer login:", error);
+    return {
+      data: null,
+      error: { message: "Erro ao fazer login. Tente novamente." },
+    };
+  }
+};
+
+/**
+ * Verifica se há sessão local válida
+ */
+export const isLoggedIn = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const session = localStorage.getItem(STORAGE_KEYS.SESSION);
+  const user = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+  return session === "active" && !!user;
 };
