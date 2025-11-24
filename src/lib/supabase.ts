@@ -1,13 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+// src/lib/supabase.ts
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 // Verifica se as credenciais do Supabase estão configuradas
-const isSupabaseConfigured = supabaseUrl && supabaseAnonKey && supabaseUrl !== '' && supabaseAnonKey !== '';
+const isSupabaseConfigured =
+  supabaseUrl !== "" && supabaseAnonKey !== "";
 
-// Cria o cliente APENAS se as credenciais estiverem configuradas
-export const supabase = isSupabaseConfigured 
+// Cliente básico (usado apenas para leitura leve)
+export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
@@ -17,8 +20,8 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
-// Helper para verificar se o Supabase está configurado
+// Helper
 export const isConfigured = () => isSupabaseConfigured;
 
-// NOTA: Todas as funções de autenticação foram movidas para local-auth.ts
-// O Supabase agora é OPCIONAL e usado apenas se configurado
+// NOTA: Toda escrita ocorre via /api/save-user usando Service Role!
+// Nunca escrevemos diretamente no cliente do frontend.
