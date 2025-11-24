@@ -1,5 +1,5 @@
 // src/lib/local-auth.ts
-// Autenticação local + sincronização com Supabase
+// Autenticação local + sincronização com Supabase (sem duplicação)
 
 import { saveUser } from "@/utils/saveUser";
 
@@ -16,15 +16,11 @@ const STORAGE_KEYS = {
   SESSION: "mindfix_session",
 };
 
-/**
- * Normaliza emails globalmente
- */
+// Normaliza email globalmente
 const normalizeEmail = (email: string) =>
   String(email || "").trim().toLowerCase();
 
-/**
- * Carrega usuário atual do localStorage
- */
+// Carrega usuário do localStorage
 export const getLocalCurrentUser = (): LocalUser | null => {
   try {
     if (typeof window === "undefined") return null;
@@ -42,17 +38,13 @@ export const getLocalCurrentUser = (): LocalUser | null => {
   }
 };
 
-/**
- * Salva o usuário no localStorage + cria sessão
- */
+// Salva usuário local
 const setLocalUser = (user: LocalUser) => {
   localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
   localStorage.setItem(STORAGE_KEYS.SESSION, "active");
 };
 
-/**
- * Remove sessão local
- */
+// Logout local
 export const localSignOut = async () => {
   try {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
@@ -64,39 +56,41 @@ export const localSignOut = async () => {
   }
 };
 
-/**
- * Criar conta local + sincronizar com Supabase
+/**  
+ * CRIAR CONTA (sem duplicar):
+ * 1. Normaliza email  
+ * 2. Salva local  
+ * 3. Chama saveUser()  
+ * 4. Se Supabase retornar registro existente, usa ele  
  */
-export const localSignUp = async (
-  email: string,
-  password: string,
-  name: string
-) => {
+export const localSignUp = async (email: string, password: string, name: string) => {
   try {
     email = normalizeEmail(email);
 
-    // Criar usuário local
+    const now = new Date().toISOString();
+
     const newUser: LocalUser = {
-      id: `local_${Date.now()}`, // substituído depois pelo ID real do Supabase
+      id: `local_${Date.now()}`,
       email,
       name,
-      createdAt: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      createdAt: now,
+      updated_at: now,
     };
 
-    // Salvar no localStorage
     setLocalUser(newUser);
 
-    // 🔥 Enviar para Supabase (isso define o ID REAL)
     const synced = await saveUser(email, {
       name,
-      createdAt: newUser.createdAt,
-      updated_at: newUser.updated_at,
+      createdAt: now,
+      updated_at: now,
     });
 
-    if (synced) setLocalUser(synced); // substituir ID local pelo ID oficial
+    if (synced) {
+      setLocalUser(synced);
+      return { data: { user: synced }, error: null };
+    }
 
-    return { data: { user: synced || newUser }, error: null };
+    return { data: { user: newUser }, error: null };
   } catch (error) {
     console.error("Erro ao criar conta:", error);
     return {
@@ -107,16 +101,24 @@ export const localSignUp = async (
 };
 
 /**
- * Login local (sincroniza com servidor)
+ * LOGIN LOCAL (versão CORRETA):
+ * Não cria conta nova → apenas sincroniza com Supabase
  */
 export const localSignIn = async (email: string, password: string) => {
   try {
     email = normalizeEmail(email);
 
-    // Apenas valida — dados reais vêm do Supabase
     const now = new Date().toISOString();
 
-    // Criar objeto temporário local
+    // Tenta buscar usuário existente direto no Supabase via saveUser()
+    const serverUser = await saveUser(email, { updated_at: now });
+
+    if (serverUser) {
+      setLocalUser(serverUser);
+      return { data: { user: serverUser }, error: null };
+    }
+
+    // Caso nunca tenha existido (raríssimo, mas protegido)
     const tempUser = {
       id: `local_${Date.now()}`,
       email,
@@ -125,16 +127,7 @@ export const localSignIn = async (email: string, password: string) => {
       updated_at: now,
     };
 
-    // Salvar no localStorage
     setLocalUser(tempUser);
-
-    // 🔥 Sincronizar com Supabase (caso já exista lá)
-    const serverUser = await saveUser(email, { updated_at: now });
-
-    if (serverUser) {
-      setLocalUser(serverUser);
-      return { data: { user: serverUser }, error: null };
-    }
 
     return { data: { user: tempUser }, error: null };
   } catch (error) {
@@ -146,9 +139,6 @@ export const localSignIn = async (email: string, password: string) => {
   }
 };
 
-/**
- * Verifica se há sessão local válida
- */
 export const isLoggedIn = (): boolean => {
   if (typeof window === "undefined") return false;
   const session = localStorage.getItem(STORAGE_KEYS.SESSION);
