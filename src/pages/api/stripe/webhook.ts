@@ -10,11 +10,14 @@ export const config = {
 
 const LIFETIME_ACCESS_EMAIL = "salvador.programs@gmail.com";
 
+<<<<<<< HEAD
 // Bypass vitalício - nunca alterar dados desta conta
 async function isLifetimeAccount(email: string): Promise<boolean> {
   return email.toLowerCase().trim() === LIFETIME_ACCESS_EMAIL.toLowerCase().trim();
 }
 
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: "2024-12-18.acacia",
@@ -91,8 +94,13 @@ export default async function handler(req, res) {
 }
 
 // ====================================================
+<<<<<<< HEAD
 // =============== HANDLERS ATUALIZADOS ===============
 // ===== Agora atualizam TODOS os campos necessários ==
+=======
+// =============== HANDLERS ORIGINAIS =================
+// ===== Todos exatamente como estavam antes =========
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 // ====================================================
 
 async function handleCheckoutCompleted(
@@ -109,6 +117,7 @@ async function handleCheckoutCompleted(
 
   console.log("📥 checkout.session.completed — email:", email);
 
+<<<<<<< HEAD
   // 🔒 BYPASS: conta vitalícia nunca é alterada
   if (await isLifetimeAccount(email)) {
     console.log("🔒 Conta vitalícia detectada - pulando atualização");
@@ -144,6 +153,12 @@ async function handleCheckoutCompleted(
       payment_verified: true,
       access_expires_at: expiresAt,
       stripe_customer_id: session.customer as string,
+=======
+  await supabase
+    .from("users")
+    .update({
+      has_access: true,
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
       updated_at: new Date().toISOString(),
     })
     .eq("email", email);
@@ -165,6 +180,7 @@ async function handlePaymentSucceeded(
 
   console.log("💰 invoice.payment_succeeded — email:", email);
 
+<<<<<<< HEAD
   // 🔒 BYPASS: conta vitalícia nunca é alterada
   if (await isLifetimeAccount(email)) {
     console.log("🔒 Conta vitalícia detectada - pulando atualização");
@@ -177,6 +193,12 @@ async function handlePaymentSucceeded(
     .update({
       subscription_status: 'active',
       payment_verified: true,
+=======
+  await supabase
+    .from("users")
+    .update({
+      has_access: true,
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
       updated_at: new Date().toISOString(),
     })
     .eq("email", email);
@@ -198,6 +220,7 @@ async function handlePaymentFailed(
 
   console.log("❌ invoice.payment_failed — email:", email);
 
+<<<<<<< HEAD
   // 🔒 BYPASS: conta vitalícia nunca é alterada
   if (await isLifetimeAccount(email)) {
     console.log("🔒 Conta vitalícia detectada - pulando atualização");
@@ -209,11 +232,21 @@ async function handlePaymentFailed(
     .update({
       subscription_status: 'past_due',
       payment_verified: false,
+=======
+  await supabase
+    .from("users")
+    .update({
+      has_access: false,
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
       updated_at: new Date().toISOString(),
     })
     .eq("email", email);
 
+<<<<<<< HEAD
   console.log("🚫 Status atualizado após falha de pagamento");
+=======
+  console.log("🚫 Acesso removido após falha de pagamento");
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 }
 
 async function handleSubscriptionUpdated(
@@ -230,16 +263,20 @@ async function handleSubscriptionUpdated(
 
   console.log("🔄 customer.subscription.updated — email:", email);
 
+<<<<<<< HEAD
   // 🔒 BYPASS: conta vitalícia nunca é alterada
   if (await isLifetimeAccount(email)) {
     console.log("🔒 Conta vitalícia detectada - pulando atualização");
     return;
   }
 
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   const isActive =
     subscription.status === "active" ||
     subscription.status === "trialing";
 
+<<<<<<< HEAD
   const expiresAt = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
     : null;
@@ -250,6 +287,12 @@ async function handleSubscriptionUpdated(
       subscription_status: subscription.status,
       payment_verified: isActive,
       access_expires_at: expiresAt,
+=======
+  await supabase
+    .from("users")
+    .update({
+      has_access: isActive,
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
       updated_at: new Date().toISOString(),
     })
     .eq("email", email);
@@ -273,6 +316,7 @@ async function handleSubscriptionDeleted(
 
   console.log("🗑 customer.subscription.deleted — email:", email);
 
+<<<<<<< HEAD
   // 🔒 BYPASS: conta vitalícia nunca é alterada
   if (await isLifetimeAccount(email)) {
     console.log("🔒 Conta vitalícia detectada - pulando atualização");
@@ -285,6 +329,12 @@ async function handleSubscriptionDeleted(
       subscription_status: 'canceled',
       payment_verified: false,
       access_expires_at: null,
+=======
+  await supabase
+    .from("users")
+    .update({
+      has_access: false,
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
       updated_at: new Date().toISOString(),
     })
     .eq("email", email);

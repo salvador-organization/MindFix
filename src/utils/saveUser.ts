@@ -1,4 +1,5 @@
 // src/utils/saveUser.ts
+<<<<<<< HEAD
 // DEPRECATED: Esta função será removida após migração completa para Supabase Auth
 // Use os hooks useUser() e useSession() para operações de usuário
 
@@ -17,6 +18,24 @@ export async function saveUser(
 ) {
   console.warn('DEPRECATED: saveUser será removido. Use useUser().updateUserProfile() diretamente.');
 
+=======
+
+/**
+ * saveUser (frontend)
+ *
+ * - Normaliza email
+ * - Faz limpeza dos updates (remove null/undefined/"")
+ * - Sincroniza com `/api/save-user`
+ * - Resolve conflitos usando updated_at
+ * - Mantém localStorage SEMPRE alinhado ao backend
+ */
+
+export async function saveUser(
+  email: string,
+  updates: Record<string, any>,
+  options: { force?: boolean } = {} // force = sobrescrever sempre
+) {
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   try {
     if (!email) {
       console.error("saveUser: email vazio");
@@ -29,6 +48,7 @@ export async function saveUser(
     // Remover valores inválidos
     updates = clean(updates);
 
+<<<<<<< HEAD
     // Buscar usuário atual no Supabase Auth
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
@@ -53,6 +73,53 @@ export async function saveUser(
     }
 
     return data;
+=======
+    // ---------- 1. Pegar dados atuais do localStorage ----------
+    let localUser: any = null;
+
+    try {
+      const stored = localStorage.getItem("user");
+      if (stored) localUser = JSON.parse(stored);
+    } catch (_) {}
+
+    // ---------- 2. Resolver conflitos usando updated_at ----------
+    if (localUser && !options.force) {
+      const localUpdatedAt = new Date(localUser.updated_at || 0).getTime();
+      const updateTimestamp = new Date(updates.updated_at || 0).getTime();
+
+      // Se os dados locais forem MAIS RECENTES → ignorar updates antigos
+      if (localUpdatedAt > updateTimestamp) {
+        // Manda o estado local inteiro ao servidor
+        updates = { ...localUser, updated_at: new Date().toISOString() };
+      }
+    }
+
+    // ---------- 3. Enviar ao backend ----------
+    const res = await fetch("/api/save-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, updates }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("❌ Erro no saveUser API route:", data);
+      return null;
+    }
+
+    const user = data.user;
+
+    // ---------- 4. Atualizar localStorage ----------
+    try {
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("userEmail", user.email);
+    } catch (e) {
+      console.warn("⚠️ localStorage não disponível:", e);
+    }
+
+    return user;
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   } catch (err) {
     console.error("❌ saveUser unexpected error:", err);
     return null;
@@ -71,6 +138,7 @@ function clean(obj: Record<string, any>) {
   }
   return r;
 }
+<<<<<<< HEAD
 
 // NOVO: função auxiliar para criar/atualizar perfil do usuário
 export async function createOrUpdateUserProfile(userId: string, profileData: Record<string, any>) {
@@ -100,3 +168,5 @@ export async function createOrUpdateUserProfile(userId: string, profileData: Rec
     return null;
   }
 }
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4

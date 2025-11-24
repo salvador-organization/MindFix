@@ -6,8 +6,12 @@ import { Toaster } from "sonner";
 import "./globals.css";
 // Import all available fonts for AI usage
 import "../lib/fonts";
+<<<<<<< HEAD
 // Proteção de rotas movida para middleware
 import { MigrationHelper } from "@/components/MigrationHelper";
+=======
+import { ProtectedRoute } from "@/components/custom/ProtectedRoute";
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,8 +42,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+<<<<<<< HEAD
         <MigrationHelper />
         {children}
+=======
+        <ProtectedRoute>
+          {children}
+        </ProtectedRoute>
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
         <Toaster position="top-right" richColors />
       </body>
     </html>

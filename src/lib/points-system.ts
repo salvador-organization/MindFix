@@ -1,7 +1,10 @@
 /**
  * Sistema Centralizado de Pontuação MindFix
  * Gerencia pontos para todas as técnicas de foco do aplicativo
+<<<<<<< HEAD
  * INTEGRADO COM SUPABASE - Salva dados na nuvem automaticamente
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
  */
 
 export type TechniqueType = 
@@ -214,11 +217,18 @@ function updateStreak(): void {
 
 /**
  * Adiciona pontos ao usuário quando uma técnica é concluída
+<<<<<<< HEAD
  * AGORA SALVA NO SUPABASE AUTOMATICAMENTE!
  */
 export function addPoints(technique: TechniqueType, customDuration?: number): number {
   const pointsToAdd = POINTS_CONFIG[technique];
 
+=======
+ */
+export function addPoints(technique: TechniqueType, customDuration?: number): number {
+  const pointsToAdd = POINTS_CONFIG[technique];
+  
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   if (!pointsToAdd) {
     console.error(`Técnica desconhecida: ${technique}`);
     return 0;
@@ -226,7 +236,11 @@ export function addPoints(technique: TechniqueType, customDuration?: number): nu
 
   const duration = customDuration || TECHNIQUE_DURATIONS[technique];
   const currentPoints = loadUserPoints();
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   const newEntry: PointsEntry = {
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     technique,
@@ -242,6 +256,7 @@ export function addPoints(technique: TechniqueType, customDuration?: number): nu
   };
 
   saveUserPoints(updatedPoints);
+<<<<<<< HEAD
 
   // NOVO: Salvar no Supabase
   savePointsToSupabase(newEntry);
@@ -255,12 +270,28 @@ export function addPoints(technique: TechniqueType, customDuration?: number): nu
   // Atualizar também as stats do dashboard
   updateDashboardStats();
 
+=======
+  
+  // Registrar sessão de foco
+  recordFocusSession(technique, duration);
+  
+  // Atualizar sequência
+  updateStreak();
+  
+  // Atualizar também as stats do dashboard
+  updateDashboardStats();
+  
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   // Disparar evento para atualizar UI
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('pointsUpdated'));
     window.dispatchEvent(new Event('focusUpdated'));
   }
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   return pointsToAdd;
 }
 
@@ -447,6 +478,7 @@ export function getWeeklyFocusStats(): { day: string; minutes: number }[] {
   
   return weekData;
 }
+<<<<<<< HEAD
 
 // ============================================
 // INTEGRAÇÃO COM SUPABASE - NOVAS FUNÇÕES
@@ -546,3 +578,5 @@ function getYesterdayDate(): string {
   yesterday.setDate(yesterday.getDate() - 1);
   return yesterday.toISOString().split('T')[0];
 }
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4

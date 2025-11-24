@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+<<<<<<< HEAD
 import { createClient } from '@supabase/supabase-js';
 
 // Rotas públicas que não precisam de autenticação
@@ -83,6 +84,24 @@ export async function middleware(request: NextRequest) {
     // Em caso de erro, redirecionar para login
     return NextResponse.redirect(new URL('/login', request.url));
   }
+=======
+
+/**
+ * MIDDLEWARE MINIMALISTA
+ * 
+ * Este middleware NÃO faz validação de autenticação ou assinatura.
+ * Toda a lógica de proteção de rotas foi movida para o client-side.
+ * 
+ * O middleware serve apenas para:
+ * - Configurações técnicas de headers
+ * - Redirecionamentos técnicos (se necessário)
+ * - NUNCA bloqueia acesso baseado em autenticação
+ */
+
+export async function middleware(request: NextRequest) {
+  // Apenas retorna next() - sem validações
+  return NextResponse.next();
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 }
 
 export const config = {
@@ -93,8 +112,13 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+<<<<<<< HEAD
      * - api routes (vamos proteger apenas páginas)
      */
     '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+=======
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   ],
 };

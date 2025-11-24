@@ -1,4 +1,5 @@
 // src/lib/local-auth.ts
+<<<<<<< HEAD
 // Autenticação 100% baseada no Supabase Auth
 // REMOVIDO: qualquer lógica de usuários locais ou duplicação
 
@@ -6,6 +7,11 @@ import { supabase } from '@/lib/supabase';
 
 // Legacy: manter apenas para compatibilidade durante transição
 // TODO: remover após migrar todos os componentes para useUser()
+=======
+// Autenticação local + sincronização com Supabase (sem duplicação)
+
+import { saveUser } from "@/utils/saveUser";
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
 export interface LocalUser {
   id: string;
@@ -15,12 +21,16 @@ export interface LocalUser {
   updated_at?: string;
 }
 
+<<<<<<< HEAD
 // LEGACY: manter apenas para transição
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 const STORAGE_KEYS = {
   CURRENT_USER: "mindfix_current_user",
   SESSION: "mindfix_session",
 };
 
+<<<<<<< HEAD
 // LEGACY: será removido
 export const getLocalCurrentUser = (): LocalUser | null => {
   console.warn('DEPRECATED: getLocalCurrentUser será removido. Use useUser() hook.');
@@ -30,6 +40,23 @@ export const getLocalCurrentUser = (): LocalUser | null => {
     if (session !== "active") return null;
     const userData = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (!userData) return null;
+=======
+// Normaliza email globalmente
+const normalizeEmail = (email: string) =>
+  String(email || "").trim().toLowerCase();
+
+// Carrega usuário do localStorage
+export const getLocalCurrentUser = (): LocalUser | null => {
+  try {
+    if (typeof window === "undefined") return null;
+
+    const session = localStorage.getItem(STORAGE_KEYS.SESSION);
+    if (session !== "active") return null;
+
+    const userData = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    if (!userData) return null;
+
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     return JSON.parse(userData);
   } catch (error) {
     console.error("Erro ao obter usuário local:", error);
@@ -37,16 +64,29 @@ export const getLocalCurrentUser = (): LocalUser | null => {
   }
 };
 
+<<<<<<< HEAD
 // LEGACY: será removido - use supabase.auth.signOut()
 export const localSignOut = async () => {
   console.warn('DEPRECATED: localSignOut será removido. Use useUser().signOut().');
   try {
     await supabase.auth.signOut();
+=======
+// Salva usuário local
+const setLocalUser = (user: LocalUser) => {
+  localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  localStorage.setItem(STORAGE_KEYS.SESSION, "active");
+};
+
+// Logout local
+export const localSignOut = async () => {
+  try {
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     localStorage.removeItem(STORAGE_KEYS.SESSION);
     return { error: null };
   } catch (error) {
     console.error("Erro ao fazer logout:", error);
+<<<<<<< HEAD
     return { error };
   }
 };
@@ -72,6 +112,47 @@ export const localSignUp = async (email: string, password: string, name: string)
     }
 
     return { data, error: null };
+=======
+    return { error: null };
+  }
+};
+
+/**  
+ * CRIAR CONTA (sem duplicar):
+ * 1. Normaliza email  
+ * 2. Salva local  
+ * 3. Chama saveUser()  
+ * 4. Se Supabase retornar registro existente, usa ele  
+ */
+export const localSignUp = async (email: string, password: string, name: string) => {
+  try {
+    email = normalizeEmail(email);
+
+    const now = new Date().toISOString();
+
+    const newUser: LocalUser = {
+      id: `local_${Date.now()}`,
+      email,
+      name,
+      createdAt: now,
+      updated_at: now,
+    };
+
+    setLocalUser(newUser);
+
+    const synced = await saveUser(email, {
+      name,
+      createdAt: now,
+      updated_at: now,
+    });
+
+    if (synced) {
+      setLocalUser(synced);
+      return { data: { user: synced }, error: null };
+    }
+
+    return { data: { user: newUser }, error: null };
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   } catch (error) {
     console.error("Erro ao criar conta:", error);
     return {
@@ -81,6 +162,7 @@ export const localSignUp = async (email: string, password: string, name: string)
   }
 };
 
+<<<<<<< HEAD
 // DEPRECATED: substituído por supabase.auth.signInWithPassword()
 export const localSignIn = async (email: string, password: string) => {
   console.warn('DEPRECATED: localSignIn será removido. Use supabase.auth.signInWithPassword() diretamente.');
@@ -96,6 +178,38 @@ export const localSignIn = async (email: string, password: string) => {
     }
 
     return { data, error: null };
+=======
+/**
+ * LOGIN LOCAL (versão CORRETA):
+ * Não cria conta nova → apenas sincroniza com Supabase
+ */
+export const localSignIn = async (email: string, password: string) => {
+  try {
+    email = normalizeEmail(email);
+
+    const now = new Date().toISOString();
+
+    // Tenta buscar usuário existente direto no Supabase via saveUser()
+    const serverUser = await saveUser(email, { updated_at: now });
+
+    if (serverUser) {
+      setLocalUser(serverUser);
+      return { data: { user: serverUser }, error: null };
+    }
+
+    // Caso nunca tenha existido (raríssimo, mas protegido)
+    const tempUser = {
+      id: `local_${Date.now()}`,
+      email,
+      name: "Usuário",
+      createdAt: now,
+      updated_at: now,
+    };
+
+    setLocalUser(tempUser);
+
+    return { data: { user: tempUser }, error: null };
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   } catch (error) {
     console.error("Erro ao fazer login:", error);
     return {
@@ -105,14 +219,19 @@ export const localSignIn = async (email: string, password: string) => {
   }
 };
 
+<<<<<<< HEAD
 // LEGACY: será removido - use useUser().isAuthenticated
 export const isLoggedIn = (): boolean => {
   console.warn('DEPRECATED: isLoggedIn será removido. Use useUser().isAuthenticated.');
+=======
+export const isLoggedIn = (): boolean => {
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   if (typeof window === "undefined") return false;
   const session = localStorage.getItem(STORAGE_KEYS.SESSION);
   const user = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
   return session === "active" && !!user;
 };
+<<<<<<< HEAD
 
 // NOVO: função para migrar dados locais para Supabase
 export const migrateLocalDataToSupabase = async () => {
@@ -176,3 +295,5 @@ export const migrateLocalDataToSupabase = async () => {
     console.error('❌ Erro durante migração:', error);
   }
 };
+=======
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4

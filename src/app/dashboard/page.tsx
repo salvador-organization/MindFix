@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+<<<<<<< HEAD
 import { toast } from 'sonner';
 import { ClarityZone } from '@/components/custom/clarity-zone';
 import { CustomPomodoro } from '@/components/custom/custom-pomodoro';
@@ -22,6 +23,20 @@ export default function DashboardPage() {
   const { user, loading: userLoading, signOut } = useUser();
   const { getTodayStats, getWeeklyStats, totalPoints, currentStreak } = useSession();
 
+=======
+import { getLocalCurrentUser, localSignOut, isLoggedIn } from '@/lib/local-auth';
+import { toast } from 'sonner';
+import { ClarityZone } from '@/components/custom/clarity-zone';
+import { CustomPomodoro } from '@/components/custom/custom-pomodoro';
+import { getTotalPoints, formatFocusTime, getCurrentStreak } from '@/lib/points-system';
+import { supabase, isConfigured } from '@/lib/supabase';
+import { useRequireSubscription } from '@/hooks/useRequireSubscription';
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const { loading } = useRequireSubscription();
+  const [user, setUser] = useState<any>(null);
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   const [stats, setStats] = useState({
     focusToday: '0m',
     streak: 0,
@@ -30,6 +45,7 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+<<<<<<< HEAD
     if (user) {
       loadUserStats();
     }
@@ -48,11 +64,77 @@ export default function DashboardPage() {
     };
 
     setStats(updatedStats);
+=======
+    checkUser();
+    loadUserStats();
+    
+    // Listener para atualizar quando uma técnica for concluída
+    const handleUpdate = () => {
+      loadUserStats();
+    };
+    
+    window.addEventListener('pointsUpdated', handleUpdate);
+    window.addEventListener('focusUpdated', handleUpdate);
+    
+    return () => {
+      window.removeEventListener('pointsUpdated', handleUpdate);
+      window.removeEventListener('focusUpdated', handleUpdate);
+    };
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      // Verificar se está logado
+      if (!isLoggedIn()) {
+        toast.error('Você precisa fazer login');
+        router.push('/login');
+        return;
+      }
+
+      // Obter usuário atual
+      const currentUser = getLocalCurrentUser();
+      if (!currentUser) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        router.push('/login');
+        return;
+      }
+
+      setUser(currentUser);
+    } catch (error) {
+      console.error('Erro ao verificar usuário:', error);
+      toast.error('Erro ao carregar dados do usuário');
+      router.push('/login');
+    }
+  };
+
+  const loadUserStats = () => {
+    // Carregar dados reais do sistema de pontuação
+    const totalPoints = getTotalPoints();
+    const focusTime = formatFocusTime();
+    const streak = getCurrentStreak();
+    const level = Math.floor(totalPoints / 100) + 1;
+    
+    const updatedStats = {
+      focusToday: focusTime,
+      streak: streak,
+      points: totalPoints,
+      level: level
+    };
+    
+    setStats(updatedStats);
+    
+    // Salvar no localStorage para persistência
+    localStorage.setItem('mindfix_user_stats', JSON.stringify(updatedStats));
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   };
 
   const handleSignOut = async () => {
     try {
+<<<<<<< HEAD
       await signOut();
+=======
+      await localSignOut();
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
       toast.success('Logout realizado com sucesso');
       router.push('/');
     } catch (error) {
@@ -60,7 +142,11 @@ export default function DashboardPage() {
     }
   };
 
+<<<<<<< HEAD
   if (userLoading) {
+=======
+  if (loading) {
+>>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
