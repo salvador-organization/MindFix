@@ -5,11 +5,11 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-// Verifica se as credenciais do Supabase estão configuradas
+// Verifica se credenciais existem
 const isSupabaseConfigured =
   supabaseUrl !== "" && supabaseAnonKey !== "";
 
-// Cliente básico (usado apenas para leitura leve)
+// Cliente para LEITURA apenas
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
@@ -23,5 +23,4 @@ export const supabase = isSupabaseConfigured
 // Helper
 export const isConfigured = () => isSupabaseConfigured;
 
-// NOTA: Toda escrita ocorre via /api/save-user usando Service Role!
-// Nunca escrevemos diretamente no cliente do frontend.
+// TODA escrita ocorre via /api/save-user usando Service Role
