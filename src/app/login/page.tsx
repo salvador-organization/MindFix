@@ -42,7 +42,12 @@ export default function LoginPage() {
 
       // O middleware e os hooks vão cuidar da validação de acesso
       // Redirecionar para dashboard (middleware vai validar acesso)
-      router.push('/dashboard');
+      await router.push('/dashboard');
+
+      // Timeout de segurança: se a navegação não funcionar, desativar loading
+      setTimeout(() => {
+        setLoading(false);
+      }, 3000);
 
     } catch (error) {
       console.error("ERRO LOGIN:", error);
@@ -90,9 +95,9 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label htmlFor="password">Senha</Label>
-                <Link href="/recuperar-senha" className="text-sm text-primary hover:underline">
-                  Esqueceu a senha?
-                </Link>
+                <span className="text-sm text-muted-foreground">
+                  Esqueceu a senha? Entre em contato conosco
+                </span>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />

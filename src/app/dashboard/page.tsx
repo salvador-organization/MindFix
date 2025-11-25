@@ -21,6 +21,23 @@ export default function DashboardPage() {
   const { user, loading: userLoading, signOut } = useUser();
   const { getTodayStats, getWeeklyStats, totalPoints, currentStreak } = useSession();
 
+  // Se ainda está carregando o usuário, mostrar loading
+  if (userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não há usuário, o useEffect vai redirecionar
+  if (!user) {
+    return null;
+  }
+
   const [stats, setStats] = useState({
     focusToday: '0m',
     streak: 0,
@@ -31,8 +48,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       loadUserStats();
+    } else if (!userLoading) {
+      // Se não há usuário e não está carregando, redirecionar para login
+      console.log('Dashboard: usuário não encontrado, redirecionando para login');
+      router.push('/login');
     }
-  }, [user]);
+  }, [user, userLoading, router]);
 
   const loadUserStats = () => {
     const todayStats = getTodayStats();
