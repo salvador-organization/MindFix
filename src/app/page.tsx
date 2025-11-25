@@ -12,7 +12,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative overflow-hidden gradient-hero">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-10" />
         
         <div className="container mx-auto px-4 py-20 md:py-32 relative z-10">
           <motion.div
