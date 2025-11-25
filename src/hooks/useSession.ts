@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useUser } from './useUser';
 
 export interface FocusSession {
   id: string;
   user_id: string;
   type: 'pomodoro' | 'hyperfocus' | 'deepflow' | 'meditation' | 'breathing';
-  duration: number;
+  duration: number; // minutos
   completed: boolean;
   started_at: string;
   completed_at?: string;
@@ -21,80 +22,99 @@ export interface UserProgress {
   longest_streak: number;
   last_activity_date: string;
   total_sessions: number;
-  total_focus_time: number;
+  total_focus_time: number; // minutos
   updated_at: string;
 }
 
-export function useSession(userId: string | null) {
+export function useSession() {
+  const { user } = useUser();
+
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userId) loadUserData();
-  }, [userId]);
+    if (user?.id) {
+      loadUserData();
+    }
+  }, [user?.id]);
 
   const loadUserData = async () => {
-    if (!userId) return;
+    if (!user?.id) return;
 
     setLoading(true);
 
     try {
-      // SESSÕES
+      // Buscar sessões
       const { data: sessionsData } = await supabase
         .from('focus_sessions')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(50);
 
       setSessions(sessionsData || []);
 
-      // PROGRESSO
+      // Buscar progresso
       const { data: progressData } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .single();
 
       setProgress(progressData || null);
 
-    } catch (err) {
-      console.error('Erro ao carregar dados de sessão:', err);
+    } catch (error) {
+      console.error('Erro ao carregar progress/sessions:', error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  const getTodayStats = () => {
-    if (!sessions.length) return { totalMinutes: 0, pointsEarned: 0 };
+  // Calcular pontos
+  const calculatePoints = (type: string, duration: number) => {
+    const base = {
+      pomodoro: 20,
+      hyperfocus: 30,
+      deepflow: 25,
+      meditation: 15,
+      breathing: 10
+    } as Record<string, number>;
 
+    return base[type] || 10;
+  };
+
+  // Estatísticas do dia
+  const getTodayStats = () => {
     const today = new Date().toISOString().split('T')[0];
 
     const todaySessions = sessions.filter(
-      (s) => s.completed && s.started_at.startsWith(today)
+      s => s.started_at.startsWith(today) && s.completed
     );
 
     return {
-      totalMinutes: todaySessions.reduce((acc, s) => acc + s.duration, 0),
-      pointsEarned: todaySessions.reduce((acc, s) => acc + (s.points_earned || 0), 0),
+      sessionsCount: todaySessions.length,
+      totalMinutes: todaySessions.reduce((t, s) => t + s.duration, 0),
+      pointsEarned: todaySessions.reduce((t, s) => t + (s.points_earned || 0), 0)
     };
   };
 
+  // Estatísticas da semana
   const getWeeklyStats = () => {
-    if (!sessions.length) return { totalMinutes: 0, totalSessions: 0, totalPoints: 0 };
-
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const weekSessions = sessions.filter(
-      (s) => new Date(s.started_at) >= weekAgo && s.completed
+      s => new Date(s.started_at) >= weekAgo && s.completed
     );
 
+    const totalMinutes = weekSessions.reduce((t, s) => t + s.duration, 0);
+    const totalSessions = weekSessions.length;
+
     return {
-      totalMinutes: weekSessions.reduce((acc, s) => acc + s.duration, 0),
-      totalSessions: weekSessions.length,
-      totalPoints: weekSessions.reduce((acc, s) => acc + (s.points_earned || 0), 0),
+      totalMinutes,
+      totalSessions,
+      dailyAverage: Math.round(totalMinutes / 7)
     };
   };
 
@@ -102,10 +122,14 @@ export function useSession(userId: string | null) {
     sessions,
     progress,
     loading,
+
+    // Chamados pelo dashboard:
     getTodayStats,
     getWeeklyStats,
-    currentStreak: progress?.current_streak || 0,
-    totalPoints: progress?.total_points || 0,
-    totalFocusTime: progress?.total_focus_time || 0,
+
+    // Dados brutos usados no dashboard:
+    totalPoints: progress?.total_points ?? 0,
+    currentStreak: progress?.current_streak ?? 0,
+    totalFocusTime: progress?.total_focus_time ?? 0
   };
 }
