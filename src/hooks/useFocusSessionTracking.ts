@@ -1,13 +1,5 @@
-<<<<<<< HEAD
 import { useEffect, useRef } from "react";
 import { useSession } from "./useSession";
-=======
-import { useEffect } from "react";
-import { 
-  registerCompletedSession, 
-  registerIncompleteSession 
-} from "@/lib/focus-storage";
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
 interface UseFocusSessionTrackingProps {
   isRunning: boolean;
@@ -26,7 +18,6 @@ export function useFocusSessionTracking({
   onComplete,
   onReset,
 }: UseFocusSessionTrackingProps) {
-<<<<<<< HEAD
 
   const { saveFocusSession } = useSession();
   const sessionStartedRef = useRef<Date | null>(null);
@@ -82,34 +73,12 @@ export function useFocusSessionTracking({
     sessionStartedRef.current = null;
     sessionSavedRef.current = false;
 
-=======
-  
-  // 🔹 Detecta quando a sessão terminou
-  useEffect(() => {
-    if (timeLeft === 0 && isRunning) {
-      const totalMinutes = totalTime / 60;
-      registerCompletedSession(totalMinutes, presetName);
-
-      if (onComplete) onComplete();
-    }
-  }, [timeLeft, isRunning]);
-
-  // 🔹 Quando o usuário reseta manualmente
-  const handleReset = () => {
-    const minutesFocused = Math.floor((totalTime - timeLeft) / 60);
-
-    if (minutesFocused > 0) {
-      registerIncompleteSession(minutesFocused, presetName);
-    }
-
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     if (onReset) onReset();
   };
 
   // 🔹 Quando o usuário sai da página
   useEffect(() => {
     return () => {
-<<<<<<< HEAD
       const minutesFocused = sessionStartedRef.current
         ? Math.floor((Date.now() - sessionStartedRef.current.getTime()) / (1000 * 60))
         : 0;
@@ -147,15 +116,3 @@ function mapPresetToType(presetName: string): 'pomodoro' | 'hyperfocus' | 'deepf
 
   return mapping[presetName] || 'pomodoro';
 }
-=======
-      const minutesFocused = Math.floor((totalTime - timeLeft) / 60);
-
-      if (minutesFocused > 0) {
-        registerIncompleteSession(minutesFocused, presetName);
-      }
-    };
-  }, []);
-
-  return { handleReset };
-}
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4

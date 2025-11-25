@@ -6,15 +6,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-<<<<<<< HEAD
 /**
  * LEGACY API: será removida após migração completa para Supabase Auth
  * Mantida apenas para compatibilidade durante transição
  *
  * @deprecated Use operações diretas do Supabase ao invés desta API
  */
-=======
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -23,11 +20,8 @@ export default async function handler(
     return res.status(405).json({ error: "Método não permitido" });
   }
 
-<<<<<<< HEAD
   console.warn('DEPRECATED: /api/save-user será removido. Use operações diretas do Supabase.');
 
-=======
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   let { email, updates } = req.body;
 
   if (!email) {

@@ -10,15 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-<<<<<<< HEAD
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { createOrUpdateUserProfile } from '@/utils/saveUser';
-=======
-import { localSignUp } from '@/lib/local-auth';
-import { toast } from 'sonner';
-import { saveUser } from '@/utils/saveUser';
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -53,7 +47,6 @@ export default function CadastroPage() {
     setLoading(true);
 
     try {
-<<<<<<< HEAD
       // Criar conta usando Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim().toLowerCase(),
@@ -65,9 +58,6 @@ export default function CadastroPage() {
           }
         }
       });
-=======
-      const { data, error } = await localSignUp(formData.email, formData.password, formData.name);
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
       if (error) {
         toast.error(error.message);
@@ -75,7 +65,6 @@ export default function CadastroPage() {
         return;
       }
 
-<<<<<<< HEAD
       if (data.user) {
         // Criar/atualizar perfil no Supabase
         await createOrUpdateUserProfile(data.user.id, {
@@ -96,25 +85,6 @@ export default function CadastroPage() {
         router.push('/quiz');
       }, 1000);
 
-=======
-      toast.success('Conta criada com sucesso!');
-
-      // --- SALVA AUTOMATICAMENTE NO SUPABASE E LOCALSTORAGE ---
-      try {
-        await saveUser(formData.email, {
-          name: formData.name,
-          created_at: new Date().toISOString()
-        });
-      } catch (e) {
-        console.error("Erro ao salvar usuário automaticamente:", e);
-      }
-      // -------------------------------------------------------
-
-      // Pequeno delay para garantir que o localStorage foi atualizado
-      setTimeout(() => {
-        router.push('/quiz');
-      }, 100);
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     } catch (error) {
       console.error('Erro no cadastro:', error);
       toast.error('Erro ao criar conta. Tente novamente.');

@@ -9,15 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-<<<<<<< HEAD
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-=======
-import { localSignIn, getLocalCurrentUser } from '@/lib/local-auth';
-import { supabase, isConfigured } from '@/lib/supabase';
-import { toast } from 'sonner';
-import { saveUser } from '@/utils/saveUser';
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,15 +26,11 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-<<<<<<< HEAD
       // Fazer login usando Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email.trim().toLowerCase(),
         password: formData.password
       });
-=======
-      const { data, error } = await localSignIn(formData.email, formData.password);
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
       if (error) {
         toast.error(error.message || 'Email ou senha incorretos');
@@ -49,90 +38,12 @@ export default function LoginPage() {
         return;
       }
 
-<<<<<<< HEAD
       toast.success('Login realizado com sucesso!');
 
       // O middleware e os hooks vão cuidar da validação de acesso
       // Redirecionar para dashboard (middleware vai validar acesso)
       router.push('/dashboard');
 
-=======
-      if (!data?.user) {
-        toast.error("Erro inesperado. Usuário não retornado.");
-        setLoading(false);
-        return;
-      }
-
-      toast.success('Login realizado com sucesso!');
-
-      const localUser = getLocalCurrentUser();
-      if (!localUser || !localUser.email) {
-        router.push('/subscription?reason=error');
-        setLoading(false);
-        return;
-      }
-
-      const email = localUser.email;
-
-      // 🔥 SINCRONIZAÇÃO AUTOMÁTICA (IMPEDIR DUPLICAÇÃO)
-      try {
-        await saveUser(email, {
-          updated_at: new Date().toISOString()
-        });
-
-        localStorage.setItem('userEmail', email);
-      } catch (e) {
-        console.error("Erro ao sincronizar usuário:", e);
-      }
-
-      // ==========================================
-      // 🔥 VERIFICAÇÃO DE ACESSO
-      // ==========================================
-      if (!isConfigured() || !supabase) {
-        router.push('/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      const { data: user, error: supabaseError } = await supabase
-        .from('users')
-        .select('is_lifetime, access_expires_at, subscription_status, payment_verified')
-        .eq('email', email)
-        .single();
-
-      if (!user || supabaseError) {
-        router.push('/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      const now = new Date();
-      const expires = user.access_expires_at ? new Date(user.access_expires_at) : null;
-
-      // Vitalício
-      if (user.is_lifetime) {
-        router.push('/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      // Acesso por data
-      if (expires && expires > now) {
-        router.push('/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      // Stripe ativo
-      if (user.subscription_status === "active" && user.payment_verified === true) {
-        router.push('/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      router.push('/subscription?reason=inactive');
-      setLoading(false);
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     } catch (error) {
       console.error("ERRO LOGIN:", error);
       toast.error('Erro ao fazer login. Tente novamente.');

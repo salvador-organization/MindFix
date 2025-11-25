@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-<<<<<<< HEAD
 import {
-=======
-import { 
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   Brain, X, TrendingUp, Calendar, Clock, Target,
   BarChart3, Activity, Flame, Award, AlertCircle
 } from 'lucide-react';
@@ -14,11 +10,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-<<<<<<< HEAD
 import { useUser } from '@/hooks/useUser';
 import { useSession } from '@/hooks/useSession';
-=======
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
 
 // Tipos para dados reais do usuário
 interface FocusSession {
@@ -42,19 +35,13 @@ interface UserStats {
 
 export default function ReportsPage() {
   const router = useRouter();
-<<<<<<< HEAD
   const { user } = useUser();
   const { sessions, progress, loading: sessionLoading } = useSession();
   const [mounted, setMounted] = useState(false);
-=======
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
   const [userStats, setUserStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
     setMounted(true);
-<<<<<<< HEAD
     if (user && sessions.length > 0) {
       loadUserData();
     }
@@ -71,30 +58,6 @@ export default function ReportsPage() {
       setUserStats(stats);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-=======
-    loadUserData();
-  }, []);
-
-  const loadUserData = () => {
-    try {
-      // Carregar dados reais do localStorage
-      const sessionsData = localStorage.getItem('focus-sessions');
-      
-      if (!sessionsData) {
-        setLoading(false);
-        return;
-      }
-
-      const sessions: FocusSession[] = JSON.parse(sessionsData);
-      
-      // Calcular estatísticas reais
-      const stats = calculateStats(sessions);
-      setUserStats(stats);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      setLoading(false);
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     }
   };
 
@@ -249,11 +212,7 @@ export default function ReportsPage() {
   };
 
   // Estado de carregamento
-<<<<<<< HEAD
   if (!mounted || sessionLoading) {
-=======
-  if (!mounted || loading) {
->>>>>>> d39087cde5feec399230e3e6916840f20a10d4e4
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur-xl z-50">
