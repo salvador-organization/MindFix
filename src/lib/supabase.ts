@@ -9,13 +9,13 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const isSupabaseConfigured =
   supabaseUrl !== "" && supabaseAnonKey !== "";
 
-// Cliente para LEITURA apenas
+// Cliente Supabase completo com autenticação
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
+        persistSession: true,  // ✅ Permite persistir sessão
+        autoRefreshToken: true, // ✅ Renova tokens automaticamente
+        detectSessionInUrl: true, // ✅ Detecta sessão na URL
       },
     })
   : null;
@@ -23,4 +23,18 @@ export const supabase = isSupabaseConfigured
 // Helper
 export const isConfigured = () => isSupabaseConfigured;
 
-// TODA escrita ocorre via /api/save-user usando Service Role
+// Cliente admin para operações server-side (usado nas APIs)
+export const getSupabaseAdmin = () => {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    console.error('SUPABASE_SERVICE_ROLE_KEY não configurada');
+    return null;
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+};
