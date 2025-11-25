@@ -19,7 +19,7 @@ import { useSession } from '@/hooks/useSession';
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: userLoading, signOut } = useUser();
-  const { getTodayStats, getWeeklyStats, totalPoints, currentStreak } = useSession();
+  const { getTodayStats, getWeeklyStats, totalPoints, currentStreak } = useSession(user?.id);
 
   // Se ainda está carregando o usuário, mostrar loading
   if (userLoading) {

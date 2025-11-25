@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useUser } from './useUser';
 
 export interface FocusSession {
   id: string;
@@ -26,27 +25,24 @@ export interface UserProgress {
   updated_at: string;
 }
 
-export function useSession() {
-  const { user } = useUser();
+export function useSession(userId?: string) {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.id) {
-      loadUserData();
+    if (userId) {
+      loadUserData(userId);
     }
-  }, [user?.id]);
+  }, [userId]);
 
-  const loadUserData = async () => {
-    if (!user?.id) return;
-
+  const loadUserData = async (id: string) => {
     setLoading(true);
     try {
       const { data: sessionsData } = await supabase
         .from('focus_sessions')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', id)
         .order('started_at', { ascending: false })
         .limit(50);
 
@@ -55,7 +51,7 @@ export function useSession() {
       const { data: progressData } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', id)
         .single();
 
       setProgress(progressData ?? null);
@@ -105,7 +101,7 @@ export function useSession() {
     };
   };
 
-  return {
+  const memoizedStats = useMemo(() => ({
     sessions,
     progress,
     loading,
@@ -113,5 +109,7 @@ export function useSession() {
     getWeeklyStats,
     currentStreak: progress?.current_streak ?? 0,
     totalPoints: progress?.total_points ?? 0,
-  };
+  }), [sessions, progress, loading]);
+
+  return memoizedStats;
 }

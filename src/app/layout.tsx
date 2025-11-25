@@ -22,6 +22,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MindFix - Domine seu foco e conquiste seus objetivos",
   description: "O app definitivo para foco, produtividade e gestão de atenção. Técnicas científicas para TDAH e hiperfoco.",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
