@@ -37,6 +37,10 @@ export function useFocusSessionTracking({
       const totalMinutes = Math.round(totalTime / 60);
 
       // Salvar no Supabase
+      if (!saveFocusSession) {
+        console.error("saveFocusSession não está disponível");
+        return;
+      }
       saveFocusSession({
         type: mapPresetToType(presetName),
         duration: totalMinutes,
@@ -59,6 +63,10 @@ export function useFocusSessionTracking({
 
     if (minutesFocused > 0 && sessionStartedRef.current && !sessionSavedRef.current) {
       // Salvar sessão incompleta no Supabase
+      if (!saveFocusSession) {
+        console.error("saveFocusSession não está disponível");
+        return;
+      }
       saveFocusSession({
         type: mapPresetToType(presetName),
         duration: minutesFocused,
@@ -85,6 +93,10 @@ export function useFocusSessionTracking({
 
       if (minutesFocused > 0 && sessionStartedRef.current && !sessionSavedRef.current) {
         // Salvar sessão incompleta no Supabase
+        if (!saveFocusSession) {
+          console.error("saveFocusSession não está disponível");
+          return;
+        }
         saveFocusSession({
           type: mapPresetToType(presetName),
           duration: minutesFocused,
@@ -105,6 +117,8 @@ function mapPresetToType(presetName: string): 'pomodoro' | 'hyperfocus' | 'deepf
   const mapping: Record<string, 'pomodoro' | 'hyperfocus' | 'deepflow' | 'meditation' | 'breathing'> = {
     'Pomodoro': 'pomodoro',
     'Pomodoro Clássico': 'pomodoro',
+    'Pomodoro Personalizado': 'pomodoro',
+    'Pomodoro Custom': 'pomodoro',
     'HyperFocus': 'hyperfocus',
     'HiperFocus Mode': 'hyperfocus',
     'DeepFlow': 'deepflow',

@@ -129,6 +129,23 @@ export function useSession(userId?: string) {
     };
   };
 
+  async function saveFocusSession(sessionData: {
+    type: string;
+    duration: number;
+    completed: boolean;
+    started_at: string;
+    completed_at?: string;
+  }) {
+    const { error } = await supabase
+      .from("focus_sessions")
+      .insert({
+        user_id: userId,
+        ...sessionData
+      });
+
+    if (error) console.error("Erro ao salvar sessão de foco:", error);
+  }
+
   const memoizedStats = useMemo(() => ({
     sessions,
     progress,
@@ -137,6 +154,7 @@ export function useSession(userId?: string) {
     getWeeklyStats,
     currentStreak: progress?.current_streak ?? 0,
     totalPoints: progress?.total_points ?? 0,
+    saveFocusSession,
   }), [sessions, progress, loading]);
 
   return memoizedStats;

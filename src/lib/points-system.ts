@@ -138,9 +138,6 @@ export function addPoints(technique: TechniqueType, customDuration?: number): nu
   // NOVO: Salvar no Supabase
   savePointsToSupabase(newEntry);
 
-  // Registrar sessão de foco
-  recordFocusSession(technique, duration);
-
   // Atualizar sequência
   updateStreak();
 
@@ -183,7 +180,7 @@ async function savePointsToSupabase(entry: PointsEntry) {
     }
 
     // Atualizar progresso do usuário
-    await updateUserProgress(user.id, entry.points);
+    await updateUserProgress(user.id, entry.points, entry.duration);
 
   } catch (error) {
     console.error('Erro ao salvar no Supabase:', error);
@@ -193,7 +190,7 @@ async function savePointsToSupabase(entry: PointsEntry) {
 /**
  * Atualiza progresso do usuário no Supabase
  */
-async function updateUserProgress(userId: string, pointsEarned: number) {
+async function updateUserProgress(userId: string, pointsEarned: number, sessionDuration?: number) {
   try {
     const { supabase } = await import('@/lib/supabase');
 
@@ -231,7 +228,7 @@ async function updateUserProgress(userId: string, pointsEarned: number) {
         longest_streak: newLongestStreak,
         last_activity_date: today,
         total_sessions: (currentProgress?.total_sessions || 0) + 1,
-        total_focus_time: (currentProgress?.total_focus_time || 0) + (TECHNIQUE_DURATIONS[entry.technique] || 0),
+        total_focus_time: (currentProgress?.total_focus_time || 0) + (sessionDuration || 0),
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id'
