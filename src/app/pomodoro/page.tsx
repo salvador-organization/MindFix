@@ -110,7 +110,7 @@ export default function PomodoroPage() {
   const { handleReset, handleComplete } = useFocusSessionTracking({
     isRunning,
     timeLeft,
-    totalTime: selectedPreset.focusTime * 60,
+    totalTime: (isBreak ? selectedPreset.breakTime : selectedPreset.focusTime) * 60,
     presetName: selectedPreset.name,
 
     onComplete: () => {
