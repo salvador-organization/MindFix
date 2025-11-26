@@ -264,10 +264,10 @@ export async function getDashboardStatsFromSupabase(userId: string): Promise<{
       .eq('user_id', userId)
       .single();
 
-    // Buscar sessões de hoje
-    const today = new Date().toISOString().split('T')[0];
-    const startOfDay = new Date(today + 'T00:00:00.000Z');
-    const endOfDay = new Date(today + 'T23:59:59.999Z');
+    // CORREÇÃO: usar horário local em vez de UTC
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
     const { data: todaySessions } = await supabase
       .from('focus_sessions')
