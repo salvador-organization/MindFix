@@ -19,24 +19,7 @@ import { useSession } from '@/hooks/useSession';
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: userLoading, signOut } = useUser();
-  const { getTodayStats, getWeeklyStats, totalPoints, currentStreak } = useSession(user?.id);
-
-  // Se ainda está carregando o usuário, mostrar loading
-  if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Se não há usuário, o useEffect vai redirecionar
-  if (!user) {
-    return null;
-  }
+  const { getTodayStats, getWeeklyStats, totalPoints, currentStreak, sessions, progress, loading: sessionLoading } = useSession(user?.id);
 
   const [stats, setStats] = useState({
     focusToday: '0m',
@@ -46,14 +29,21 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && !sessionLoading) {
       loadUserStats();
-    } else if (!userLoading) {
+    }
+  }, [user, sessionLoading]);
+
+  useEffect(() => {
+    if (!userLoading && !user) {
       // Se não há usuário e não está carregando, redirecionar para login
       console.log('Dashboard: usuário não encontrado, redirecionando para login');
       router.push('/login');
     }
   }, [user, userLoading, router]);
+
+  // Se ainda está carregando ou não há usuário, mostrar loading dentro do JSX
+  const shouldShowLoading = userLoading || !user;
 
   const loadUserStats = () => {
     const todayStats = getTodayStats();
@@ -80,29 +70,31 @@ export default function DashboardPage() {
     }
   };
 
-  if (userLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">
-            Carregando...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
-  if (!user) {
-    return null;
-  }
+  const userName = user?.name || user?.email?.split('@')[0] || 'Usuário';
 
-  const userName = user.name || user.email?.split('@')[0] || 'Usuário';
+  // ⚠️ REMOVIDO: Early return que QUEBRA os hooks!
+  // Antes: if (userLoading || !user) return (...)
+  // Isso causava React Error #310 porque os hooks useUser() e useSession()
+  // eram chamados em algumas renderizações mas não em outras.
+  // Agora TODOS os hooks são chamados SEMPRE, independente do estado de loading.
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur-xl z-50">
+      {shouldShowLoading ? (
+        // Loading state - sempre renderiza dentro do JSX normal
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">
+              {userLoading ? 'Carregando...' : 'Redirecionando para login...'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Header */}
+          <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur-xl z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/dashboard" className="flex items-center gap-2">
@@ -378,6 +370,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+        </>
+      )}
     </div>
   );
 }

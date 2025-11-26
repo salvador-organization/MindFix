@@ -16,24 +16,37 @@ export interface MindFixUser {
 }
 
 export function useUser() {
+  // ⚠️ IMPORTANTE: Sempre inicializar com valores padrão consistentes
+  // Isso garante que o hook SEMPRE retorna a mesma estrutura
+  // independente do estado de autenticação
   const [user, setUser] = useState<MindFixUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authUser, setAuthUser] = useState<User | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     // Buscar usuário autenticado do Supabase Auth
     const getInitialSession = async () => {
       try {
+        if (cancelled) return;
+
         const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+
         setAuthUser(session?.user ?? null);
 
         if (session?.user) {
           await loadUserProfile(session.user.id);
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Erro ao buscar sessão inicial:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
@@ -42,6 +55,8 @@ export function useUser() {
     // Listener para mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (cancelled) return;
+
         setAuthUser(session?.user ?? null);
 
         if (session?.user) {
@@ -50,11 +65,16 @@ export function useUser() {
           setUser(null);
         }
 
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadUserProfile = async (userId: string) => {

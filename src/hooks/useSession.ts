@@ -26,41 +26,69 @@ export interface UserProgress {
 }
 
 export function useSession(userId?: string) {
+  // ⚠️ IMPORTANTE: Sempre inicializar com valores padrão consistentes
+  // Isso garante que o hook NUNCA muda sua estrutura interna
+  // independente de userId existir ou não
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [progress, setProgress] = useState<UserProgress | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userId) {
-      loadUserData(userId);
-    }
+    let cancelled = false;
+
+    const loadData = async () => {
+      // ⚠️ CORREÇÃO CRÍTICA: Quando userId não existe ainda,
+      // definir estado CONSISTENTE e só executar busca quando existir
+      if (!userId) {
+        setSessions([]);
+        setProgress(null);
+        setLoading(true); // Sempre true quando não há userId
+        return;
+      }
+
+      if (cancelled) return;
+
+      setLoading(true);
+      try {
+        const { data: sessionsData } = await supabase
+          .from('focus_sessions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('started_at', { ascending: false })
+          .limit(50);
+
+        if (cancelled) return;
+        setSessions(sessionsData || []);
+
+        const { data: progressData } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+
+        if (cancelled) return;
+        setProgress(progressData ?? null);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Erro ao carregar dados:', error);
+          // Em caso de erro, manter estado consistente
+          setSessions([]);
+          setProgress(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
-  const loadUserData = async (id: string) => {
-    setLoading(true);
-    try {
-      const { data: sessionsData } = await supabase
-        .from('focus_sessions')
-        .select('*')
-        .eq('user_id', id)
-        .order('started_at', { ascending: false })
-        .limit(50);
-
-      setSessions(sessionsData || []);
-
-      const { data: progressData } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', id)
-        .single();
-
-      setProgress(progressData ?? null);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getTodayStats = () => {
     const today = new Date().toISOString().split('T')[0];
