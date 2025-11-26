@@ -74,30 +74,13 @@ export const TECHNIQUE_NAMES: Record<TechniqueType, string> = {
   'deepflow': 'DeepFlow Session'
 };
 
-const STORAGE_KEY = 'mindfix_user_points';
-const SESSIONS_KEY = 'mindfix_focus_sessions';
-const STREAK_KEY = 'mindfix_user_streak';
 
 /**
- * Carrega os pontos do usuário do localStorage (fallback)
- * Agora sincroniza com Supabase quando possível
+ * @deprecated - Migrado para Supabase. Usar getDashboardStatsFromSupabase() no Dashboard.
+ * Mantido apenas como fallback para gamification.
  */
 export function loadUserPoints(): UserPoints {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Converter timestamps de string para Date
-      parsed.history = parsed.history.map((entry: any) => ({
-        ...entry,
-        timestamp: new Date(entry.timestamp)
-      }));
-      return parsed;
-    }
-  } catch (error) {
-    console.error('Erro ao carregar pontos:', error);
-  }
-
+  // REMOVIDO: implementação localStorage - usar Supabase
   return {
     totalPoints: 0,
     history: []
@@ -117,7 +100,7 @@ export function addPoints(technique: TechniqueType, customDuration?: number): nu
   }
 
   const duration = customDuration || TECHNIQUE_DURATIONS[technique];
-  const currentPoints = loadUserPoints();
+  // REMOVIDO: loadUserPoints() - migrado para Supabase
 
   const newEntry: PointsEntry = {
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -128,21 +111,12 @@ export function addPoints(technique: TechniqueType, customDuration?: number): nu
     duration
   };
 
-  const updatedPoints: UserPoints = {
-    totalPoints: currentPoints.totalPoints + pointsToAdd,
-    history: [newEntry, ...currentPoints.history]
-  };
-
-  saveUserPoints(updatedPoints);
+  // REMOVIDO: updatedPoints, saveUserPoints(), updateStreak() - migrado para Supabase
 
   // NOVO: Salvar no Supabase
   savePointsToSupabase(newEntry);
 
-  // Atualizar sequência
-  updateStreak();
-
-  // Atualizar também as stats do dashboard
-  updateDashboardStats();
+  // REMOVIDO: updateDashboardStats() - migrado para Supabase
 
   // Disparar evento para atualizar UI
   if (typeof window !== 'undefined') {
@@ -181,6 +155,11 @@ async function savePointsToSupabase(entry: PointsEntry) {
 
     // Atualizar progresso do usuário
     await updateUserProgress(user.id, entry.points, entry.duration);
+
+    // Disparar evento para atualizar dashboard em tempo real
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dashboardUpdated'));
+    }
 
   } catch (error) {
     console.error('Erro ao salvar no Supabase:', error);
@@ -249,245 +228,83 @@ function getYesterdayDate(): string {
   return yesterday.toISOString().split('T')[0];
 }
 
-// ... resto do código permanece igual para compatibilidade ...
-function saveUserPoints(points: UserPoints): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
-  } catch (error) {
-    console.error('Erro ao salvar pontos:', error);
-  }
-}
+// REMOVIDO: saveUserPoints() - migrado para Supabase
 
-function loadFocusSessions(): FocusSession[] {
-  try {
-    const stored = localStorage.getItem(SESSIONS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.map((session: any) => ({
-        ...session,
-        timestamp: new Date(session.timestamp)
-      }));
-    }
-  } catch (error) {
-    console.error('Erro ao carregar sessões:', error);
-  }
-  return [];
-}
 
-function saveFocusSessions(sessions: FocusSession[]): void {
-  try {
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-  } catch (error) {
-    console.error('Erro ao salvar sessões:', error);
-  }
-}
 
-function loadStreakData(): StreakData {
-  try {
-    const stored = localStorage.getItem(STREAK_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error('Erro ao carregar streak:', error);
-  }
 
-  return {
-    currentStreak: 0,
-    lastActivityDate: '',
-    longestStreak: 0
-  };
-}
-
-function saveStreakData(streak: StreakData): void {
-  try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
-  } catch (error) {
-    console.error('Erro ao salvar streak:', error);
-  }
-}
-
-function updateStreak(): void {
-  const today = new Date().toISOString().split('T')[0];
-  const streakData = loadStreakData();
-
-  // Se já registrou atividade hoje, não faz nada
-  if (streakData.lastActivityDate === today) {
-    return;
-  }
-
-  // Verificar se a última atividade foi ontem
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-  if (streakData.lastActivityDate === yesterdayStr) {
-    // Continua a sequência
-    streakData.currentStreak += 1;
-  } else if (streakData.lastActivityDate === '') {
-    // Primeira atividade
-    streakData.currentStreak = 1;
-  } else {
-    // Quebrou a sequência, reinicia
-    streakData.currentStreak = 1;
-  }
-
-  // Atualizar maior sequência
-  if (streakData.currentStreak > streakData.longestStreak) {
-    streakData.longestStreak = streakData.currentStreak;
-  }
-
-  streakData.lastActivityDate = today;
-  saveStreakData(streakData);
-}
-
-function recordFocusSession(technique: TechniqueType, duration: number): void {
-  const sessions = loadFocusSessions();
-
-  const newSession: FocusSession = {
-    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    technique,
-    duration,
-    timestamp: new Date(),
-    completed: true
-  };
-
-  sessions.unshift(newSession);
-  saveFocusSessions(sessions);
-}
-
-function updateDashboardStats(): void {
-  try {
-    const statsKey = 'mindfix_user_stats';
-    const totalPoints = getTotalPoints();
-    const focusTime = formatFocusTime();
-    const streak = getCurrentStreak();
-
-    const stats = {
-      focusToday: focusTime,
-      streak: streak,
-      points: totalPoints,
-      level: Math.floor(totalPoints / 100) + 1
-    };
-
-    localStorage.setItem(statsKey, JSON.stringify(stats));
-  } catch (error) {
-    console.error('Erro ao atualizar stats do dashboard:', error);
-  }
-}
-
-export function getTodayFocusTime(): { hours: number; minutes: number; totalMinutes: number } {
-  const sessions = loadFocusSessions();
-  const today = new Date().toISOString().split('T')[0];
-
-  const todaySessions = sessions.filter(session => {
-    const sessionDate = new Date(session.timestamp).toISOString().split('T')[0];
-    return sessionDate === today && session.completed;
-  });
-
-  const totalMinutes = todaySessions.reduce((sum, session) => sum + session.duration, 0);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return { hours, minutes, totalMinutes };
-}
-
-export function formatFocusTime(): string {
-  const { hours, minutes } = getTodayFocusTime();
-
-  if (hours === 0 && minutes === 0) {
-    return '0m';
-  }
-
-  if (hours === 0) {
-    return `${minutes}m`;
-  }
-
-  if (minutes === 0) {
-    return `${hours}h`;
-  }
-
-  return `${hours}h ${minutes}m`;
-}
-
-export function getCurrentStreak(): number {
-  const streakData = loadStreakData();
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-  // Se a última atividade foi hoje ou ontem, retorna a sequência atual
-  if (streakData.lastActivityDate === today || streakData.lastActivityDate === yesterdayStr) {
-    return streakData.currentStreak;
-  }
-
-  // Caso contrário, a sequência foi quebrada
-  return 0;
-}
 
 export function getPointsHistory(limit?: number): PointsEntry[] {
   const points = loadUserPoints();
   return limit ? points.history.slice(0, limit) : points.history;
 }
 
-export function getTotalPoints(): number {
-  return loadUserPoints().totalPoints;
-}
+// REMOVIDO: funções que usam localStorage - migrado para Supabase
+// getTotalPoints, getPointsByTechnique, getPointsStatsByTechnique, clearPointsHistory, getWeeklyFocusStats
 
-export function getPointsByTechnique(technique: TechniqueType): number {
-  const points = loadUserPoints();
-  return points.history
-    .filter(entry => entry.technique === technique)
-    .reduce((sum, entry) => sum + entry.points, 0);
-}
+/**
+ * Busca estatísticas do dashboard diretamente do Supabase
+ * Substitui completamente o sistema baseado em localStorage
+ */
+export async function getDashboardStatsFromSupabase(userId: string): Promise<{
+  todayMinutes: number;
+  totalPoints: number;
+  currentStreak: number;
+  longestStreak: number;
+  totalSessions: number;
+  minutesByTechnique?: Record<string, number>;
+}> {
+  try {
+    const { supabase } = await import('@/lib/supabase');
 
-export function getPointsStatsByTechnique(): Record<TechniqueType, { count: number; totalPoints: number }> {
-  const points = loadUserPoints();
-  const stats: any = {};
+    // Buscar progresso do usuário
+    const { data: progress } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
-  Object.keys(POINTS_CONFIG).forEach(technique => {
-    const entries = points.history.filter(entry => entry.technique === technique);
-    stats[technique] = {
-      count: entries.length,
-      totalPoints: entries.reduce((sum, entry) => sum + entry.points, 0)
+    // Buscar sessões de hoje
+    const today = new Date().toISOString().split('T')[0];
+    const startOfDay = new Date(today + 'T00:00:00.000Z');
+    const endOfDay = new Date(today + 'T23:59:59.999Z');
+
+    const { data: todaySessions } = await supabase
+      .from('focus_sessions')
+      .select('duration, type')
+      .eq('user_id', userId)
+      .gte('started_at', startOfDay.toISOString())
+      .lte('started_at', endOfDay.toISOString())
+      .eq('completed', true);
+
+    // Calcular minutos de hoje
+    const todayMinutes = todaySessions?.reduce((sum: number, session: any) => sum + session.duration, 0) || 0;
+
+    // Calcular minutos por técnica (opcional)
+    const minutesByTechnique = todaySessions?.reduce((acc: Record<string, number>, session: any) => {
+      acc[session.type] = (acc[session.type] || 0) + session.duration;
+      return acc;
+    }, {} as Record<string, number>) || {};
+
+    return {
+      todayMinutes,
+      totalPoints: progress?.total_points || 0,
+      currentStreak: progress?.current_streak || 0,
+      longestStreak: progress?.longest_streak || 0,
+      totalSessions: progress?.total_sessions || 0,
+      minutesByTechnique
     };
-  });
 
-  return stats;
-}
-
-export function clearPointsHistory(): void {
-  const emptyPoints: UserPoints = {
-    totalPoints: 0,
-    history: []
-  };
-  saveUserPoints(emptyPoints);
-}
-
-export function getWeeklyFocusStats(): { day: string; minutes: number }[] {
-  const sessions = loadFocusSessions();
-  const today = new Date();
-  const weekData: { day: string; minutes: number }[] = [];
-
-  // Últimos 7 dias
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-
-    const daySessions = sessions.filter(session => {
-      const sessionDate = new Date(session.timestamp).toISOString().split('T')[0];
-      return sessionDate === dateStr && session.completed;
-    });
-
-    const totalMinutes = daySessions.reduce((sum, session) => sum + session.duration, 0);
-
-    weekData.push({
-      day: date.toLocaleDateString('pt-BR', { weekday: 'short' }),
-      minutes: totalMinutes
-    });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas do dashboard:', error);
+    // Retornar valores padrão em caso de erro
+    return {
+      todayMinutes: 0,
+      totalPoints: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalSessions: 0,
+      minutesByTechnique: {}
+    };
   }
-
-  return weekData;
 }

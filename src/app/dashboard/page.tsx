@@ -15,11 +15,11 @@ import { ClarityZone } from '@/components/custom/clarity-zone';
 import { CustomPomodoro } from '@/components/custom/custom-pomodoro';
 import { useUser } from '@/hooks/useUser';
 import { useSession } from '@/hooks/useSession';
+import { getDashboardStatsFromSupabase } from '@/lib/points-system';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: userLoading, signOut } = useUser();
-  const { getTodayStats, getWeeklyStats, totalPoints, currentStreak, sessions, progress, loading: sessionLoading } = useSession(user?.id);
 
   const [stats, setStats] = useState({
     focusToday: '0m',
@@ -28,11 +28,39 @@ export default function DashboardPage() {
     level: 1
   });
 
-  useEffect(() => {
-    if (user && !sessionLoading) {
-      loadUserStats();
+  const [loading, setLoading] = useState(true);
+
+  const fetchStats = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const dashboardStats = await getDashboardStatsFromSupabase(user.id);
+
+      const updatedStats = {
+        focusToday: dashboardStats.todayMinutes > 0 ? `${dashboardStats.todayMinutes}m` : '0m',
+        streak: dashboardStats.currentStreak,
+        points: dashboardStats.totalPoints,
+        level: Math.floor(dashboardStats.totalPoints / 100) + 1
+      };
+
+      setStats(updatedStats);
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [user, sessionLoading]);
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const handler = () => fetchStats();
+    window.addEventListener("dashboardUpdated", handler);
+    return () => window.removeEventListener("dashboardUpdated", handler);
+  }, []);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -43,22 +71,7 @@ export default function DashboardPage() {
   }, [user, userLoading, router]);
 
   // Se ainda está carregando ou não há usuário, mostrar loading dentro do JSX
-  const shouldShowLoading = userLoading || !user;
-
-  const loadUserStats = () => {
-    const todayStats = getTodayStats();
-    const weeklyStats = getWeeklyStats();
-    const level = Math.floor(totalPoints / 100) + 1;
-
-    const updatedStats = {
-      focusToday: todayStats.totalMinutes > 0 ? `${todayStats.totalMinutes}m` : '0m',
-      streak: currentStreak,
-      points: totalPoints,
-      level: level
-    };
-
-    setStats(updatedStats);
-  };
+  const shouldShowLoading = userLoading || !user || loading;
 
   const handleSignOut = async () => {
     try {
@@ -135,10 +148,30 @@ export default function DashboardPage() {
         {/* Quick Stats - Dados Reais */}
         <div className="grid md:grid-cols-4 gap-6 mb-12">
           {[
-            { icon: Target, label: 'Foco Hoje', value: stats.focusToday, color: 'text-primary' },
-            { icon: Zap, label: 'Sequência', value: `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`, color: 'text-accent' },
-            { icon: Award, label: 'Pontos', value: stats.points.toString(), color: 'text-chart-4' },
-            { icon: TrendingUp, label: 'Nível', value: stats.level.toString(), color: 'text-chart-2' }
+            {
+              icon: Target,
+              label: 'Foco Hoje',
+              value: loading ? '...' : stats.focusToday,
+              color: 'text-primary'
+            },
+            {
+              icon: Zap,
+              label: 'Sequência',
+              value: loading ? '...' : `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`,
+              color: 'text-accent'
+            },
+            {
+              icon: Award,
+              label: 'Pontos',
+              value: loading ? '...' : stats.points.toString(),
+              color: 'text-chart-4'
+            },
+            {
+              icon: TrendingUp,
+              label: 'Nível',
+              value: loading ? '...' : stats.level.toString(),
+              color: 'text-chart-2'
+            }
           ].map((stat, i) => (
             <motion.div
               key={i}
@@ -249,7 +282,14 @@ export default function DashboardPage() {
             <Card className="p-8 glass">
               <h2 className="text-2xl font-bold mb-4">Seu Progresso</h2>
               <div className="space-y-4">
-                {stats.streak === 0 && stats.points === 0 ? (
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-muted rounded w-3/4 mx-auto mb-2"></div>
+                      <div className="h-4 bg-muted rounded w-1/2 mx-auto"></div>
+                    </div>
+                  </div>
+                ) : stats.streak === 0 && stats.points === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
                       Comece sua primeira sessão de foco para ver seu progresso aqui
@@ -266,7 +306,7 @@ export default function DashboardPage() {
                     <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold">Foco Hoje</h3>
-                        <span className="text-sm text-primary">{stats.focusToday}</span>
+                        <span className="text-sm text-primary">{loading ? '...' : stats.focusToday}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         Tempo total de foco no dia de hoje
@@ -276,20 +316,20 @@ export default function DashboardPage() {
                     <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold">Sequência Atual</h3>
-                        <span className="text-sm text-accent">{stats.streak} {stats.streak === 1 ? 'dia' : 'dias'}</span>
+                        <span className="text-sm text-accent">{loading ? '...' : `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {stats.streak > 0 ? 'Continue focando para manter sua sequência!' : 'Comece uma nova sequência hoje!'}
+                        {loading ? 'Carregando...' : (stats.streak > 0 ? 'Continue focando para manter sua sequência!' : 'Comece uma nova sequência hoje!')}
                       </p>
                     </div>
 
                     <div className="p-4 rounded-lg bg-card/50 border border-border">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold">Pontos Totais</h3>
-                        <span className="text-sm text-muted-foreground">{stats.points} pts</span>
+                        <span className="text-sm text-muted-foreground">{loading ? '...' : `${stats.points} pts`}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Nível {stats.level} - Continue evoluindo!
+                        {loading ? 'Carregando...' : `Nível ${stats.level} - Continue evoluindo!`}
                       </p>
                     </div>
                   </>
