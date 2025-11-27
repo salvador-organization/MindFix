@@ -6,6 +6,7 @@ interface UseFocusSessionTrackingProps {
   timeLeft: number;           // segundos restantes
   totalTime: number;          // segundos totais da sessão
   presetName: string;         // nome da técnica / preset
+  presetId: string;           // ID do preset
   onComplete?: () => void;    // função executada quando o timer termina
   onReset?: () => void;       // função executada quando o user reseta o timer
 }
@@ -15,6 +16,7 @@ export function useFocusSessionTracking({
   timeLeft,
   totalTime,
   presetName,
+  presetId,
   onComplete,
   onReset,
 }: UseFocusSessionTrackingProps) {
@@ -41,8 +43,18 @@ export function useFocusSessionTracking({
         console.error("saveFocusSession não está disponível");
         return;
       }
+
+      const mappedType = mapPresetToType(presetName, presetId);
+      console.log('💾 Salvando sessão completa:', {
+        presetName,
+        presetId,
+        mappedType,
+        totalTime,
+        minutes: totalMinutes
+      });
+
       saveFocusSession({
-        type: mapPresetToType(presetName),
+        type: mappedType,
         duration: totalMinutes,
         completed: true,
         started_at: sessionStartedRef.current.toISOString(),
@@ -53,7 +65,7 @@ export function useFocusSessionTracking({
 
       if (onComplete) onComplete();
     }
-  }, [timeLeft, isRunning, totalTime, presetName, saveFocusSession, onComplete]);
+  }, [timeLeft, isRunning, totalTime, presetName, presetId, saveFocusSession, onComplete]);
 
   // 🔹 Quando o usuário reseta manualmente
   const handleReset = () => {
@@ -67,19 +79,29 @@ export function useFocusSessionTracking({
         console.error("saveFocusSession não está disponível");
         return;
       }
+
+      const mappedType = mapPresetToType(presetName, presetId);
+      console.log('💾 Salvando sessão incompleta (reset):', {
+        presetName,
+        presetId,
+        mappedType,
+        totalTime,
+        minutes: minutesFocused
+      });
+
       saveFocusSession({
-        type: mapPresetToType(presetName),
+        type: mappedType,
         duration: minutesFocused,
         completed: false,
         started_at: sessionStartedRef.current.toISOString()
       });
 
+      // marcar como salvo para evitar gravações duplicadas no cleanup
       sessionSavedRef.current = true;
     }
 
-    // Reset refs
+    // Reset refs (não zera sessionSavedRef — deixamos true quando já salvamos)
     sessionStartedRef.current = null;
-    sessionSavedRef.current = false;
 
     if (onReset) onReset();
   };
@@ -97,8 +119,18 @@ export function useFocusSessionTracking({
           console.error("saveFocusSession não está disponível");
           return;
         }
+
+        const mappedType = mapPresetToType(presetName, presetId);
+        console.log('💾 Salvando sessão incompleta (cleanup):', {
+          presetName,
+          presetId,
+          mappedType,
+          totalTime,
+          minutes: minutesFocused
+        });
+
         saveFocusSession({
-          type: mapPresetToType(presetName),
+          type: mappedType,
           duration: minutesFocused,
           completed: false,
           started_at: sessionStartedRef.current.toISOString()
@@ -107,26 +139,37 @@ export function useFocusSessionTracking({
         sessionSavedRef.current = true;
       }
     };
-  }, [presetName, saveFocusSession]);
+  }, [presetName, presetId, saveFocusSession]);
 
   return { handleReset };
 }
 
 // Helper para mapear nomes de preset para tipos do Supabase
-function mapPresetToType(presetName: string): 'pomodoro' | 'hyperfocus' | 'deepflow' | 'meditation' | 'breathing' {
-  const mapping: Record<string, 'pomodoro' | 'hyperfocus' | 'deepflow' | 'meditation' | 'breathing'> = {
-    'Pomodoro': 'pomodoro',
-    'Pomodoro Clássico': 'pomodoro',
-    'Pomodoro Personalizado': 'pomodoro',
-    'Pomodoro Custom': 'pomodoro',
-    'HyperFocus': 'hyperfocus',
-    'HiperFocus Mode': 'hyperfocus',
-    'DeepFlow': 'deepflow',
-    'DeepFlow Session': 'deepflow',
-    'Meditação': 'meditation',
-    'Mindfulness': 'meditation',
-    'Respiração': 'breathing'
+function mapPresetToType(
+  presetName: string,
+  presetId: string
+): 'pomodoro-standard' | 'pomodoro-custom' | 'hyperfocus' | 'deepflow' | 'meditation' | 'breathing' {
+  // O hook deve confiar 100% nos valores recebidos do componente
+  // Sem buscar presets em outro arquivo, sem tentar adivinhar o tipo, sem sobrescrever nada
+
+  // 1) Detectar custom apenas por presetId (única fonte confiável)
+  if (presetId === 'custom') return 'pomodoro-custom';
+
+  // 2) Para outros tipos, usar mapeamento direto baseado no nome
+  const name = (presetName || '').toLowerCase().trim();
+
+  const mapping: Record<string, 'hyperfocus' | 'deepflow' | 'meditation' | 'breathing' | 'pomodoro-standard'> = {
+    'hyperfocus': 'hyperfocus',
+    'hiperfocus mode': 'hyperfocus',
+    'deepflow': 'deepflow',
+    'deepflow session': 'deepflow',
+    'meditação': 'meditation',
+    'meditacao': 'meditation',
+    'mindfulness': 'meditation',
+    'respiração': 'breathing',
+    'respiracao': 'breathing'
   };
 
-  return mapping[presetName] || 'pomodoro';
+  // Retornar o tipo mapeado ou pomodoro-standard como padrão
+  return mapping[name] || 'pomodoro-standard';
 }

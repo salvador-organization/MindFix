@@ -107,26 +107,36 @@ export default function PomodoroPage() {
   }, [isRunning, isBreak, soundEnabled]);
 
   // Hook reutilizável que registra sessões (comporta onComplete e onReset)
-  const { handleReset, handleComplete } = useFocusSessionTracking({
+  // Função chamada quando o timer chega a zero
+  const handleComplete = () => {
+    // Aqui fazemos o que o UI precisa: som, toast, ciclos
+    if (soundEnabled) playCompletionSound();
+
+    const focusTime = selectedPreset.id === 'custom' ? customFocusTime : selectedPreset.focusTime;
+    toast.success(`Sessão de foco concluída! +${focusTime} minutos registrados`);
+
+    if (currentCycle < selectedPreset.cycles) {
+      const breakTime = selectedPreset.id === 'custom' ? customBreakTime : selectedPreset.breakTime;
+      setIsBreak(true);
+      setTimeLeft(breakTime * 60);
+      setShowActiveRest(true);
+    } else {
+      setIsCompleted(true);
+    }
+  };
+
+  const { handleReset } = useFocusSessionTracking({
     isRunning,
     timeLeft,
-    totalTime: (isBreak ? selectedPreset.breakTime : selectedPreset.focusTime) * 60,
+    totalTime: selectedPreset.id === 'custom'
+      ? (isBreak ? customBreakTime : customFocusTime) * 60
+      : (isBreak ? selectedPreset.breakTime : selectedPreset.focusTime) * 60,
     presetName: selectedPreset.name,
+    presetId: selectedPreset.id,
 
     onComplete: () => {
-      // Esta função é chamada pelo hook quando a sessão foi registrada como completa
-      // Aqui ainda fazemos o que o UI precisa: som, toast, ciclos
-      if (soundEnabled) playCompletionSound();
-
-      toast.success(`Sessão de foco concluída! +${selectedPreset.focusTime} minutos registrados`);
-
-      if (currentCycle < selectedPreset.cycles) {
-        setIsBreak(true);
-        setTimeLeft(selectedPreset.breakTime * 60);
-        setShowActiveRest(true);
-      } else {
-        setIsCompleted(true);
-      }
+      // Esta função é chamada pelo hook quando a sessão foi registrada como completa no Supabase
+      // O UI já foi atualizado pelo handleComplete acima
     },
 
     onReset: () => {
@@ -135,7 +145,8 @@ export default function PomodoroPage() {
       setIsRunning(false);
       setIsBreak(false);
       setCurrentCycle(1);
-      setTimeLeft(selectedPreset.focusTime * 60);
+      const focusTime = selectedPreset.id === 'custom' ? customFocusTime : selectedPreset.focusTime;
+      setTimeLeft(focusTime * 60);
       setIsCompleted(false);
       setShowActiveRest(false);
     },
@@ -243,8 +254,8 @@ export default function PomodoroPage() {
   };
 
   const totalTime = isBreak
-    ? selectedPreset.breakTime * 60
-    : selectedPreset.focusTime * 60;
+    ? (selectedPreset.id === 'custom' ? customBreakTime : selectedPreset.breakTime) * 60
+    : (selectedPreset.id === 'custom' ? customFocusTime : selectedPreset.focusTime) * 60;
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
 
   return (
@@ -471,7 +482,7 @@ export default function PomodoroPage() {
                 <h3 className="text-xl font-bold mb-2">Todos os Ciclos Concluídos! 🎉</h3>
                 <p className="text-muted-foreground mb-4">Você completou {selectedPreset.cycles} ciclos de foco intenso</p>
                 <div className="flex items-center justify-center gap-2 text-sm mb-4">
-                  <span className="text-primary font-semibold">+{selectedPreset.cycles * selectedPreset.focusTime} minutos de foco</span>
+                  <span className="text-primary font-semibold">+{selectedPreset.cycles * (selectedPreset.id === 'custom' ? customFocusTime : selectedPreset.focusTime)} minutos de foco</span>
                   <span className="text-muted-foreground">•</span>
                   <span className="text-primary font-semibold">+{selectedPreset.cycles * 25} pontos</span>
                 </div>
