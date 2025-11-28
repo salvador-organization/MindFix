@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getTotalPoints, getPointsHistory, type PointsEntry } from '@/lib/points-system';
 import { supabase } from '@/lib/supabase';
+import { useUser } from '@/hooks/useUser';
+import { useSession } from '@/hooks/useSession';
 
 // Tipos para dados reais
 interface UserLevel {
@@ -55,6 +57,8 @@ const RARITY_COLORS = {
 
 export default function GamificationPage() {
   const router = useRouter();
+  const { user } = useUser();
+  const { sessions, progress, loading: sessionLoading } = useSession(user?.id);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
