@@ -330,7 +330,8 @@ export default function DashboardPage() {
           transition={{ delay: 0.4 }}
         >
           <h2 className="text-2xl font-bold mb-6">Técnicas Disponíveis</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="w-full max-w-[1400px] mx-auto mt-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
             {[
               {
                 title: 'Brown Noise',
@@ -353,7 +354,7 @@ export default function DashboardPage() {
             ].map((item, i) => (
               <Card
                 key={i}
-                className="p-6 glass hover:scale-105 transition-all cursor-pointer"
+                className="bg-[#0f0f1a] p-6 rounded-xl border border-white/5 h-full w-full hover:scale-105 transition-all cursor-pointer"
                 onClick={() => router.push(item.route)}
               >
                 <div className="w-full h-32 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 mb-4 flex items-center justify-center">
@@ -373,6 +374,7 @@ export default function DashboardPage() {
                 </div>
               </Card>
             ))}
+            </div>
           </div>
         </motion.div>
 
