@@ -308,3 +308,50 @@ export async function getDashboardStatsFromSupabase(userId: string): Promise<{
     };
   }
 }
+
+/**
+ * Busca pontos totais do usuário com fallback inteligente
+ */
+export async function getTotalPoints(userId?: string): Promise<number> {
+  try {
+    const { supabase } = await import('@/lib/supabase');
+
+    let id = userId;
+    if (!id) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      id = user?.id;
+    }
+
+    if (!id) return 0;
+
+    const { data: progress, error } = await supabase
+      .from('user_progress')
+      .select('total_points')
+      .eq('user_id', id)
+      .single();
+
+    if (error) {
+      console.error('getTotalPoints: erro ao buscar user_progress', error);
+
+      const { data: sessions, error: sessErr } = await supabase
+        .from('focus_sessions')
+        .select('points_earned')
+        .eq('user_id', id)
+        .is('completed', true);
+
+      if (!sessErr && sessions) {
+        const sum = sessions.reduce((s: number, r: any) => s + (r.points_earned || 0), 0);
+        return sum;
+      }
+
+      return 0;
+    }
+
+    return progress?.total_points || 0;
+  } catch (err) {
+    console.error('getTotalPoints: fallback por erro', err);
+    return 0;
+  }
+}

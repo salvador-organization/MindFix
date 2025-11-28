@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
+import {
   Brain, X, Award, Trophy, Star, Zap, Target,
   CheckCircle2, Lock, TrendingUp, Flame, AlertCircle, Clock
 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getTotalPoints, getPointsHistory, type PointsEntry } from '@/lib/points-system';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // Tipos para dados reais
 interface UserLevel {
@@ -54,6 +55,7 @@ const RARITY_COLORS = {
 
 export default function GamificationPage() {
   const router = useRouter();
+  const supabase = createClientComponentClient();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
@@ -61,6 +63,7 @@ export default function GamificationPage() {
   const [weeklyMissions, setWeeklyMissions] = useState<WeeklyMission[]>([]);
   const [pointsHistory, setPointsHistory] = useState<PointsEntry[]>([]);
   const [totalPoints, setTotalPoints] = useState(0);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -78,22 +81,51 @@ export default function GamificationPage() {
     };
   }, []);
 
-  const loadUserData = () => {
+  const loadUserData = async () => {
     try {
-      // Carregar pontos totais do sistema de pontuação
-      const points = getTotalPoints();
+      setLoading(true);
+
+      // Buscar sessão do usuário
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      // Buscar dados do perfil do usuário
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!profileData) {
+        console.error('Perfil não encontrado');
+        setLoading(false);
+        return;
+      }
+
+      setProfile(profileData);
+
+      // Buscar pontos totais usando a nova função
+      const points = await getTotalPoints(session.user.id);
       setTotalPoints(points);
-      
+
+      // Calcular nível baseado em dados do perfil
+      const calculatedLevel = {
+        level: profile.level || 1,
+        currentXP: profile.xp % 100,
+        xpToNextLevel: 100,
+        totalXP: profile.xp || 0
+      };
+      setUserLevel(calculatedLevel);
+
       // Carregar histórico de pontos (últimos 10)
       const history = getPointsHistory(10);
       setPointsHistory(history);
-      
-      // Calcular nível baseado em pontos
-      const calculatedLevel = calculateUserLevel(points);
-      setUserLevel(calculatedLevel);
-      
-      // Carregar dados do localStorage
-      const levelData = localStorage.getItem('user-level');
+
+      // Carregar dados do localStorage para conquistas e missões (por enquanto mantemos localStorage)
       const achievementsData = localStorage.getItem('user-achievements');
       const missionsData = localStorage.getItem('weekly-missions');
       const sessionsData = localStorage.getItem('focus-sessions');
@@ -113,10 +145,10 @@ export default function GamificationPage() {
       if (missionsData) {
         const loadedMissions = JSON.parse(missionsData);
         // Verificar se missões expiraram
-        const validMissions = loadedMissions.filter((m: WeeklyMission) => 
+        const validMissions = loadedMissions.filter((m: WeeklyMission) =>
           new Date(m.expiresAt) > new Date()
         );
-        
+
         if (validMissions.length === 0) {
           // Gerar novas missões baseadas em dados reais
           const newMissions = generateWeeklyMissions(sessionsData ? JSON.parse(sessionsData) : []);
@@ -306,6 +338,35 @@ export default function GamificationPage() {
   }
 
   // Estado vazio - usuário novo
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur-xl z-50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <Brain className="w-6 h-6 text-primary" />
+                <span className="font-bold text-xl">MindFix</span>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard')}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="animate-pulse space-y-8">
+              <div className="h-32 bg-muted rounded-lg" />
+              <div className="h-64 bg-muted rounded-lg" />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Estado vazio - usuário novo
   if (!userLevel || userLevel.totalXP === 0) {
     return (
       <div className="min-h-screen bg-background">
@@ -349,7 +410,7 @@ export default function GamificationPage() {
 
   const unlockedAchievements = achievements.filter(a => a.unlocked);
   const lockedAchievements = achievements.filter(a => !a.unlocked);
-  const xpProgress = (userLevel.currentXP / userLevel.xpToNextLevel) * 100;
+  const xpProgress = profile ? ((profile.xp % 100) / 100) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -393,9 +454,9 @@ export default function GamificationPage() {
                     <Trophy className="w-10 h-10" />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold">Nível {userLevel.level}</h2>
+                    <h2 className="text-3xl font-bold">Nível {profile?.level ?? 1}</h2>
                     <p className="text-muted-foreground">
-                      {userLevel.currentXP} / {userLevel.xpToNextLevel} XP
+                      {profile?.xp ?? 0} XP Total
                     </p>
                   </div>
                 </div>
@@ -415,7 +476,7 @@ export default function GamificationPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-2 text-center">
-                Faltam {userLevel.xpToNextLevel - userLevel.currentXP} pontos para o próximo nível
+                {profile ? `${100 - (profile.xp % 100)} pontos para o próximo nível` : 'Carregando...'}
               </p>
             </div>
           </Card>
