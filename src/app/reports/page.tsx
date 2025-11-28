@@ -36,7 +36,7 @@ interface UserStats {
 export default function ReportsPage() {
   const router = useRouter();
   const { user } = useUser();
-  const { sessions, progress, loading: sessionLoading } = useSession();
+  const { sessions, progress, loading: sessionLoading } = useSession(user?.id);
   const [mounted, setMounted] = useState(false);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
 
