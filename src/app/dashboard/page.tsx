@@ -149,12 +149,6 @@ export default function DashboardPage() {
         <div className="grid md:grid-cols-4 gap-6 mb-12">
           {[
             {
-              icon: Target,
-              label: 'Foco Hoje',
-              value: loading ? '...' : stats.focusToday,
-              color: 'text-primary'
-            },
-            {
               icon: Zap,
               label: 'Sequência',
               value: loading ? '...' : `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`,
@@ -303,16 +297,6 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold">Foco Hoje</h3>
-                        <span className="text-sm text-primary">{loading ? '...' : stats.focusToday}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Tempo total de foco no dia de hoje
-                      </p>
-                    </div>
-
                     <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold">Sequência Atual</h3>
