@@ -16,7 +16,7 @@ import { useSession } from '@/hooks/useSession';
 // Tipos para dados reais do usuário
 interface FocusSession {
   id: string;
-  date: Date;
+  started_at: string; // timestamp do Supabase
   duration: number; // em minutos
   category?: string;
   completed: boolean;
@@ -35,17 +35,19 @@ interface UserStats {
 
 export default function ReportsPage() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const { sessions, progress, loading: sessionLoading } = useSession(user?.id);
   const [mounted, setMounted] = useState(false);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
+    console.log("SESSIONS RAW:", sessions);
+    
     setMounted(true);
-    if (user && sessions.length > 0) {
+    if (!userLoading && user && sessions.length > 0) {
       loadUserData();
     }
-  }, [user, sessions]);
+  }, [userLoading, user, sessions]);
 
   const loadUserData = () => {
     if (!user || sessions.length === 0) {
@@ -66,10 +68,10 @@ export default function ReportsPage() {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     
     // Filtrar sessões da última semana
-    const weekSessions = sessions.filter(s => new Date(s.date) >= weekAgo);
+    const weekSessions = sessions.filter(s => new Date(s.started_at) >= weekAgo);
     
     // Calcular minutos totais da semana
-    const weeklyMinutes = weekSessions.reduce((sum, s) => sum + s.duration, 0);
+    const weeklyMinutes = weekSessions.reduce((sum, s) => sum + (s.duration ?? 0), 0);
     
     // Contar sessões completas
     const completedSessions = weekSessions.filter(s => s.completed).length;
@@ -107,8 +109,8 @@ export default function ReportsPage() {
   const calculateStreak = (sessions: FocusSession[]): number => {
     if (sessions.length === 0) return 0;
     
-    const sortedSessions = [...sessions].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
+    const sortedSessions = [...sessions].sort((a, b) =>
+      new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
     );
     
     let streak = 0;
@@ -116,7 +118,7 @@ export default function ReportsPage() {
     currentDate.setHours(0, 0, 0, 0);
     
     for (const session of sortedSessions) {
-      const sessionDate = new Date(session.date);
+      const sessionDate = new Date(session.started_at);
       sessionDate.setHours(0, 0, 0, 0);
       
       const diffDays = Math.floor((currentDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -136,8 +138,8 @@ export default function ReportsPage() {
     const weekData = days.map(day => ({ day, minutes: 0, sessions: 0 }));
     
     sessions.forEach(session => {
-      const dayIndex = new Date(session.date).getDay();
-      weekData[dayIndex].minutes += session.duration;
+      const dayIndex = new Date(session.started_at).getDay();
+      weekData[dayIndex].minutes += (session.duration ?? 0);
       weekData[dayIndex].sessions += 1;
     });
     
@@ -149,8 +151,8 @@ export default function ReportsPage() {
     const hourlyData = Array.from({ length: 24 }, (_, i) => ({ hour: i, minutes: 0 }));
     
     sessions.forEach(session => {
-      const hour = new Date(session.date).getHours();
-      hourlyData[hour].minutes += session.duration;
+      const hour = new Date(session.started_at).getHours();
+      hourlyData[hour].minutes += (session.duration ?? 0);
     });
     
     return hourlyData;
@@ -162,8 +164,8 @@ export default function ReportsPage() {
     
     sessions.forEach(session => {
       const category = session.category || 'Sem categoria';
-      categoryMap.set(category, (categoryMap.get(category) || 0) + session.duration);
-      totalMinutes += session.duration;
+      categoryMap.set(category, (categoryMap.get(category) || 0) + (session.duration ?? 0));
+      totalMinutes += (session.duration ?? 0);
     });
     
     return Array.from(categoryMap.entries()).map(([category, minutes]) => ({
@@ -189,14 +191,14 @@ export default function ReportsPage() {
     });
     
     sessions.forEach(session => {
-      const sessionDate = new Date(session.date);
-      const monthIndex = last3Months.findIndex(m => 
-        m.month === monthNames[sessionDate.getMonth()] && 
+      const sessionDate = new Date(session.started_at);
+      const monthIndex = last3Months.findIndex(m =>
+        m.month === monthNames[sessionDate.getMonth()] &&
         m.year === sessionDate.getFullYear()
       );
       
       if (monthIndex !== -1) {
-        last3Months[monthIndex].minutes += session.duration;
+        last3Months[monthIndex].minutes += (session.duration ?? 0);
         last3Months[monthIndex].sessions += 1;
       }
     });
@@ -242,7 +244,7 @@ export default function ReportsPage() {
   }
 
   // Estado vazio - sem dados
-  if (!userStats || userStats.weeklyMinutes === 0) {
+  if (!userStats) {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border sticky top-0 bg-background/80 backdrop-blur-xl z-50">
@@ -283,8 +285,20 @@ export default function ReportsPage() {
     );
   }
 
-  const maxMinutes = Math.max(...userStats.weeklyData.map(d => d.minutes), 1);
-  const maxHourlyMinutes = Math.max(...userStats.hourlyData.map(d => d.minutes), 1);
+  // Fallback seguro para quando userStats for null
+  const safeUserStats = userStats || {
+    weeklyMinutes: 0,
+    completedSessions: 0,
+    currentStreak: 0,
+    dailyAverage: 0,
+    weeklyData: [],
+    hourlyData: [],
+    categoryData: [],
+    monthlyData: []
+  };
+
+  const maxMinutes = Math.max(...safeUserStats.weeklyData.map(d => d.minutes), 1);
+  const maxHourlyMinutes = Math.max(...safeUserStats.hourlyData.map(d => d.minutes), 1);
 
   return (
     <div className="min-h-screen bg-background">
@@ -320,34 +334,34 @@ export default function ReportsPage() {
 
           {/* Key Metrics */}
           <div className="grid md:grid-cols-4 gap-6 mb-8">
-            {[
-              { 
-                icon: Clock, 
-                label: 'Foco Semanal', 
-                value: `${userStats.weeklyMinutes} min`, 
-                change: userStats.weeklyMinutes > 0 ? 'Ativo' : 'Inativo', 
-                color: 'text-primary' 
+              {[
+              {
+                icon: Clock,
+                label: 'Foco Semanal',
+                value: `${safeUserStats.weeklyMinutes} min`,
+                change: safeUserStats.weeklyMinutes > 0 ? 'Ativo' : 'Inativo',
+                color: 'text-primary'
               },
-              { 
-                icon: Target, 
-                label: 'Sessões Completas', 
-                value: userStats.completedSessions.toString(), 
-                change: `Esta semana`, 
-                color: 'text-accent' 
+              {
+                icon: Target,
+                label: 'Sessões Completas',
+                value: safeUserStats.completedSessions.toString(),
+                change: `Esta semana`,
+                color: 'text-accent'
               },
-              { 
-                icon: Flame, 
-                label: 'Sequência Atual', 
-                value: `${userStats.currentStreak} ${userStats.currentStreak === 1 ? 'dia' : 'dias'}`, 
-                change: userStats.currentStreak > 0 ? 'Mantendo!' : 'Comece hoje', 
-                color: 'text-chart-4' 
+              {
+                icon: Flame,
+                label: 'Sequência Atual',
+                value: `${safeUserStats.currentStreak} ${safeUserStats.currentStreak === 1 ? 'dia' : 'dias'}`,
+                change: safeUserStats.currentStreak > 0 ? 'Mantendo!' : 'Comece hoje',
+                color: 'text-chart-4'
               },
-              { 
-                icon: TrendingUp, 
-                label: 'Média Diária', 
-                value: `${userStats.dailyAverage} min`, 
-                change: 'Últimos 7 dias', 
-                color: 'text-chart-2' 
+              {
+                icon: TrendingUp,
+                label: 'Média Diária',
+                value: `${safeUserStats.dailyAverage} min`,
+                change: 'Últimos 7 dias',
+                color: 'text-chart-2'
               }
             ].map((metric, i) => (
               <motion.div
@@ -380,7 +394,7 @@ export default function ReportsPage() {
             </div>
 
             <div className="space-y-4">
-              {userStats.weeklyData.map((day, i) => (
+              {safeUserStats.weeklyData.map((day, i) => (
                 <motion.div
                   key={day.day}
                   initial={{ opacity: 0, x: -20 }}
@@ -414,7 +428,7 @@ export default function ReportsPage() {
             </p>
 
             <div className="grid grid-cols-12 gap-2">
-              {userStats.hourlyData.map((data, i) => {
+              {safeUserStats.hourlyData.map((data, i) => {
                 const intensity = maxHourlyMinutes > 0 ? data.minutes / maxHourlyMinutes : 0;
                 return (
                   <motion.div
@@ -456,9 +470,9 @@ export default function ReportsPage() {
                 Onde você investe seu tempo
               </p>
 
-              {userStats.categoryData.length > 0 ? (
+              {safeUserStats.categoryData.length > 0 ? (
                 <div className="space-y-4">
-                  {userStats.categoryData.map((cat, i) => (
+                  {safeUserStats.categoryData.map((cat, i) => (
                     <motion.div
                       key={cat.category}
                       initial={{ opacity: 0, x: -20 }}
@@ -496,7 +510,7 @@ export default function ReportsPage() {
               </p>
 
               <div className="space-y-6">
-                {userStats.monthlyData.map((month, i) => (
+                {safeUserStats.monthlyData.map((month, i) => (
                   <motion.div
                     key={month.month}
                     initial={{ opacity: 0, y: 20 }}
