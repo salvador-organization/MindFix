@@ -146,7 +146,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Quick Stats - Dados Reais */}
-        <div className="grid md:grid-cols-4 gap-6 mb-12">
+        <div className="w-full flex justify-between gap-6 mb-12">
           {[
             {
               icon: Zap,
@@ -172,8 +172,9 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
+              className="flex-1"
             >
-              <Card className="p-6 glass hover:scale-105 transition-all">
+              <Card className="p-6 glass hover:scale-105 transition-all h-full">
                 <stat.icon className={`w-8 h-8 ${stat.color} mb-3`} />
                 <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                 <p className="text-2xl font-bold">{stat.value}</p>
@@ -181,6 +182,7 @@ export default function DashboardPage() {
             </motion.div>
           ))}
         </div>
+
 
         {/* POMODORO PERSONALIZADO */}
         <motion.div

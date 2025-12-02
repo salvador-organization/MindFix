@@ -98,7 +98,7 @@ export default function GamificationPage() {
 
       // Buscar dados do perfil do usuário
       const { data: profileData } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', session.user.id)
         .single();
