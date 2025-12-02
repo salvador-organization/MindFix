@@ -57,7 +57,7 @@ const RARITY_COLORS = {
 
 export default function GamificationPage() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const { sessions, progress, loading: sessionLoading } = useSession(user?.id);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,19 +70,34 @@ export default function GamificationPage() {
 
   useEffect(() => {
     setMounted(true);
-    loadUserData();
-    
+    if (!userLoading && user) {
+      loadUserData();
+    }
+
     // Listener para atualizar quando pontos mudarem
     const handlePointsUpdate = () => {
-      loadUserData();
+      if (!userLoading && user) {
+        loadUserData();
+      }
     };
-    
+
     window.addEventListener('pointsUpdated', handlePointsUpdate);
-    
+
     return () => {
       window.removeEventListener('pointsUpdated', handlePointsUpdate);
     };
-  }, []);
+  }, [userLoading, user]);
+
+  // Efeito para recalcular conquistas e missões quando sessions mudarem
+  useEffect(() => {
+    if (sessions && sessions.length >= 0) {
+      const updatedAchievements = initializeAchievements(sessions);
+      setAchievements(updatedAchievements);
+
+      const updatedMissions = generateWeeklyMissions(sessions);
+      setWeeklyMissions(updatedMissions);
+    }
+  }, [sessions]);
 
   const loadUserData = async () => {
     try {
@@ -115,57 +130,21 @@ export default function GamificationPage() {
       const points = await getTotalPoints(session.user.id);
       setTotalPoints(points);
 
-      // Calcular nível baseado em dados do perfil
-      const calculatedLevel = {
-        level: profile.level || 1,
-        currentXP: profile.xp % 100,
-        xpToNextLevel: 100,
-        totalXP: profile.xp || 0
-      };
+      // Calcular nível baseado nos pontos totais do Supabase
+      const calculatedLevel = calculateUserLevel(points);
       setUserLevel(calculatedLevel);
 
       // Carregar histórico de pontos (últimos 10)
       const history = getPointsHistory(10);
       setPointsHistory(history);
 
-      // Carregar dados do localStorage para conquistas e missões (por enquanto mantemos localStorage)
-      const achievementsData = localStorage.getItem('user-achievements');
-      const missionsData = localStorage.getItem('weekly-missions');
-      const sessionsData = localStorage.getItem('focus-sessions');
+      // Inicializar conquistas baseadas em dados reais do Supabase
+      const initialAchievements = initializeAchievements(sessions);
+      setAchievements(initialAchievements);
 
-      // Carregar conquistas reais
-      if (achievementsData) {
-        const loadedAchievements = JSON.parse(achievementsData);
-        setAchievements(loadedAchievements);
-      } else {
-        // Inicializar conquistas baseadas em dados reais
-        const initialAchievements = initializeAchievements(sessionsData ? JSON.parse(sessionsData) : []);
-        setAchievements(initialAchievements);
-        localStorage.setItem('user-achievements', JSON.stringify(initialAchievements));
-      }
-
-      // Carregar missões semanais reais
-      if (missionsData) {
-        const loadedMissions = JSON.parse(missionsData);
-        // Verificar se missões expiraram
-        const validMissions = loadedMissions.filter((m: WeeklyMission) =>
-          new Date(m.expiresAt) > new Date()
-        );
-
-        if (validMissions.length === 0) {
-          // Gerar novas missões baseadas em dados reais
-          const newMissions = generateWeeklyMissions(sessionsData ? JSON.parse(sessionsData) : []);
-          setWeeklyMissions(newMissions);
-          localStorage.setItem('weekly-missions', JSON.stringify(newMissions));
-        } else {
-          setWeeklyMissions(validMissions);
-        }
-      } else {
-        // Gerar missões iniciais
-        const newMissions = generateWeeklyMissions(sessionsData ? JSON.parse(sessionsData) : []);
-        setWeeklyMissions(newMissions);
-        localStorage.setItem('weekly-missions', JSON.stringify(newMissions));
-      }
+      // Gerar missões semanais baseadas em dados reais do Supabase
+      const newMissions = generateWeeklyMissions(sessions);
+      setWeeklyMissions(newMissions);
 
       setLoading(false);
     } catch (error) {
@@ -262,7 +241,7 @@ export default function GamificationPage() {
     
     // Contar sessões da semana atual
     const weekStart = new Date(now.getTime() - now.getDay() * 24 * 60 * 60 * 1000);
-    const weekSessions = sessions.filter(s => new Date(s.date) >= weekStart);
+    const weekSessions = sessions.filter(s => new Date(s.started_at) >= weekStart);
     const completedThisWeek = weekSessions.filter(s => s.completed).length;
     
     return [
@@ -413,7 +392,18 @@ export default function GamificationPage() {
 
   const unlockedAchievements = achievements.filter(a => a.unlocked);
   const lockedAchievements = achievements.filter(a => !a.unlocked);
-  const xpProgress = profile ? ((profile.xp % 100) / 100) * 100 : 0;
+
+  // Criar fallback seguro para profile
+  const safeProfile = profile ?? {
+    level: 1,
+    xp: 0,
+    nextLevelXp: 100,
+    totalPoints: 0,
+  };
+
+  const displayXP = Number(totalPoints ?? safeProfile.xp ?? 0);
+  const xpProgress = ((displayXP % 100) / 100) * 100;
+  const pointsToNext = 100 - (displayXP % 100);
 
   return (
     <div className="min-h-screen bg-background">
@@ -457,9 +447,9 @@ export default function GamificationPage() {
                     <Trophy className="w-10 h-10" />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold">Nível {profile?.level ?? 1}</h2>
+                    <h2 className="text-3xl font-bold">Nível {safeProfile.level}</h2>
                     <p className="text-muted-foreground">
-                      {profile?.xp ?? 0} XP Total
+                      {safeProfile.xp} XP Total
                     </p>
                   </div>
                 </div>
@@ -479,7 +469,7 @@ export default function GamificationPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground mt-2 text-center">
-                {profile ? `${100 - (profile.xp % 100)} pontos para o próximo nível` : 'Carregando...'}
+                {pointsToNext} pontos para o próximo nível
               </p>
             </div>
           </Card>
